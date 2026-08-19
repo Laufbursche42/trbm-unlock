@@ -324,3 +324,6 @@ dialog::backdrop { background: var(--backdrop); }
 .tile.cell-low b { color: var(--bad); }
 .tile.cell-bal { border-color: var(--accent); }
 .tile .bal { display: block; color: var(--accent); }
+
+/* Firmware-warning modal: the reported version, emphasised via CSS (not inline HTML). */
+.fw-ver { font-weight: 600; color: var(--value); white-space: nowrap; }

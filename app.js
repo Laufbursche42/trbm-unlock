@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v6';
+const BUILD = 'v7';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -295,7 +295,18 @@ function checkFwVersion() {
   if (fwWarned || !T.swVer || T.swVer === SUPPORTED_FW) return;
   fwWarned = true;
   const msg = $('fwwarn-msg');
-  if (msg) msg.textContent = fmt(t('fwWarnMsg'), { ver: T.swVer });
+  if (msg) {
+    // Build the message with safe DOM nodes (no innerHTML): the version goes into a span styled by
+    // CSS (.fw-ver), the rest is plain text split around the {ver} placeholder.
+    while (msg.firstChild) msg.removeChild(msg.firstChild);
+    const parts = t('fwWarnMsg').split('{ver}');
+    msg.appendChild(document.createTextNode(parts[0] || ''));
+    const ver = document.createElement('span');
+    ver.className = 'fw-ver';
+    ver.textContent = T.swVer;
+    msg.appendChild(ver);
+    if (parts.length > 1) msg.appendChild(document.createTextNode(parts.slice(1).join('{ver}')));
+  }
   const dlg = $('fwwarn');
   if (dlg && dlg.showModal && !dlg.open) dlg.showModal();
   log('firmware ' + T.swVer + ' is not the supported ' + SUPPORTED_FW);
