@@ -53,6 +53,15 @@
       <label>Gang 3</label>
       <input id="g3-in" type="number" min="1" max="100" value="80">
     </div>
+    <div class="set-row">
+      <label>Anfahrt vorne (Test)</label>
+      <input id="fstart-in" type="number" min="0" max="15" placeholder="leer = unverändert">
+    </div>
+    <div class="set-row">
+      <label>Anfahrt hinten (Test)</label>
+      <input id="rstart-in" type="number" min="0" max="15" placeholder="leer = unverändert">
+    </div>
+    <p class="hint">Anfahrts-Level: die App lässt nur 1 bis 5 zu, technisch passt 0 bis 15 in den Frame. Leer lassen lässt den Wert unverändert; ein Wert wird beim nächsten Entsperren/Sperren mitgeschrieben - zum Testen, ob die Firmware mehr als 5 annimmt.</p>
     <p class="hint" data-t="gearHint"></p>
     <p class="hint" data-t="controlsHint"></p>
     <div class="row"><span class="fin"><span data-t="rowSwVer"></span> <span id="t-swver">-</span></span></div>

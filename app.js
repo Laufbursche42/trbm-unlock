@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v7';
+const BUILD = 'v8';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -767,6 +767,16 @@ function readNum(id, dflt) {
   return (isNaN(v) || v < 0) ? dflt : Math.min(v, 100);
 }
 
+// Start level (Anfahrts-Level) test field: the value is the low nibble of a[8]/a[9], so 0..15 fit on
+// the wire. The native app caps the UI at 5; here it goes to 15 to test whether the firmware accepts
+// more. Empty field returns null -> the mirrored (unchanged) level is written.
+function readLevel(id) {
+  const el = $(id);
+  if (!el || el.value === '') return null;
+  const v = parseInt(el.value, 10);
+  return isNaN(v) ? null : Math.max(0, Math.min(v, 15));
+}
+
 // Germany uses the internal ESC gears 2, 3, 4 (the rider sees them as gears 1, 2, 3). Internal gears
 // 1 and 5 exist only abroad, so we never touch them. DE_GEARS maps rider gear -> internal ESC gear.
 const DE_GEARS = [2, 3, 4];
@@ -775,16 +785,19 @@ const DE_GEARS = [2, 3, 4];
 // else (eabs/start levels, currents, global max via S.speedLimit) is mirrored from the last 55 71.
 // vals[i] is the speed for DE_GEARS[i]. Confirmed lever from the captures: Byte10 = 22 locked, 60 open.
 function writeGearSpeeds(vals) {
+  const fsIn = readLevel('fstart-in');   // null = mirror unchanged; number = test value (0..15)
+  const rsIn = readLevel('rstart-in');
   for (let i = 0; i < DE_GEARS.length; i++) {
     const g = DE_GEARS[i];
     const c = gearCache[g] || {};
     const eabs = (c.eabsLevel != null) ? c.eabsLevel : S.eabsLevel;
-    const fs = (c.fStartLevel != null) ? c.fStartLevel : S.fStartLevel;
-    const rs = (c.rStartLevel != null) ? c.rStartLevel : S.rStartLevel;
+    const fs = (fsIn != null) ? fsIn : ((c.fStartLevel != null) ? c.fStartLevel : S.fStartLevel);
+    const rs = (rsIn != null) ? rsIn : ((c.rStartLevel != null) ? c.rStartLevel : S.rStartLevel);
     const fc = (c.fCurrent != null) ? c.fCurrent : S.fCurrent;
     const rc = (c.rCurrent != null) ? c.rCurrent : S.rCurrent;
     enqueue(buildSettingFrame(2, g, eabs, fs, rs, vals[i] & 0xFF, fc, rc));
   }
+  if (fsIn != null || rsIn != null) log('Anfahrts-Level Test: vorne=' + (fsIn != null ? fsIn : 'unverändert') + ' hinten=' + (rsIn != null ? rsIn : 'unverändert'));
 }
 
 function unlock() {
