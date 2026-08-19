@@ -1,0 +1,23 @@
+# OS
+Thumbs.db
+.DS_Store
+# IDE
+.idea/
+*.iml
+.vscode/
+# Dev tooling only (nothing here is shipped)
+node_modules/
+# Secrets - never commit
+*.pem
+*.jks
+*.p12
+*.keystore
+.env
+secrets.*
+token.txt
+# Logs
+*.log
+# Firmware never belongs in this repository: the rider brings the file
+firmware/
+test-fw/
+*.hex

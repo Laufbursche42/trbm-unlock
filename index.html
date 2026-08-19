@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<!-- No frame-ancestors here: a browser ignores it in a meta element, it only works as an
+     HTTP header. GitHub Pages sends no custom headers, so it would only log a warning. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title data-t="pageTitle">Laufbursche Blade Mini (eKFV) Tool</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="favicon-180.png">
+<link rel="stylesheet" href="styles.css?v=69">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Laufbursche <span data-t="brandSub"></span></h1>
+    <div class="head-right">
+      <span class="status" id="status" data-state="disconnected">disconnected</span>
+      <div class="head-tools">
+        <button type="button" class="theme-btn" id="btn-theme">&#9728;</button>
+        <div class="langs" id="langs" role="group">
+          <button type="button" data-lang="de" aria-pressed="true">DE</button>
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="card">
+    <h2 data-t="s1Title"></h2>
+    <p class="hint" data-t="sub"></p>
+    <p class="hint" data-t="startHintGuide"></p>
+  </div>
+
+  <div class="card">
+    <h2 data-t="s2Title"></h2>
+    <div class="btns">
+      <button class="primary span2" id="btn-conn"></button>
+      <button class="primary span2" id="btn-toggle" disabled></button>
+    </div>
+    <p class="hint" data-t="controlsHint"></p>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="tile"><b id="t-wheel">-</b><small data-t="tileWheel"></small></div>
+      <div class="tile"><b id="t-cruise">-</b><small data-t="tileCruise"></small></div>
+    </div>
+    <div class="row"><span class="fin"><span data-t="rowSwVer"></span> <span id="t-swver">-</span></span></div>
+    <div class="row"><span class="fin"><span data-t="rowFwVer"></span> <span id="t-fwver">-</span></span></div>
+  </div>
+
+  <div class="card">
+    <h2 data-t="s3Title"></h2>
+    <div class="set-row">
+      <label data-t="lblWheel"></label>
+      <input id="wheel-in" type="number" step="0.1" min="1" disabled>
+      <button id="btn-set-wheel" data-t="btnSetWheel" disabled></button>
+    </div>
+    <div class="set-row">
+      <label data-t="lblCruise"></label>
+      <select id="cruise-in" disabled>
+        <option value="0" data-t="cruiseOff"></option>
+        <option value="1" data-t="cruiseAuto"></option>
+        <option value="2" data-t="cruiseManual"></option>
+      </select>
+      <button id="btn-set-cruise" data-t="btnSetCruise" disabled></button>
+    </div>
+    <p class="hint" data-t="settingsHint"></p>
+  </div>
+
+  <div class="card">
+    <h2 data-t="errTitle"></h2>
+    <p class="hint" data-t="errHint"></p>
+    <div class="btns">
+      <button class="primary span2" id="btn-err" data-t="btnErr" disabled></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 data-t="batTitle"></h2>
+    <p class="hint" data-t="batHint"></p>
+    <div class="btns">
+      <button class="primary span2" id="btn-bat" data-t="btnBat" disabled></button>
+    </div>
+  </div>
+
+  <!-- Hidden until the page is opened with ?test=led. The script is what unhides it. -->
+  <div class="card" id="led-card" hidden>
+    <h2 data-t="ledTitle"></h2>
+    <p class="hint" data-t="ledHint"></p>
+    <div class="row">
+      <button class="primary span2" id="btn-led" data-t="btnLed" disabled></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 data-t="s4Title"></h2>
+    <p class="hint" data-t="flashHint"></p>
+    <p class="hint" data-t="iosHint"></p>
+
+    <div class="row">
+      <button id="btn-pick" data-t="btnPick" disabled></button>
+      <button class="primary" id="btn-flash" disabled></button>
+    </div>
+    <!-- No accept filter on purpose: iOS resolves it to its own file types, does not know
+         .hex and greys the file out. What counts is the check in onFwFile. -->
+    <input type="file" id="fw-file" hidden>
+    <div id="fw-check"></div>
+
+    <div id="fw-progress" hidden>
+      <div class="bar"><span id="fw-bar"></span></div>
+      <p class="hint" id="fw-phase">-</p>
+    </div>
+
+    <hr class="sep">
+    <p class="danger" data-t="flashDanger"></p>
+    <p class="warn" data-t="flashHw"></p>
+  </div>
+
+  <div class="card">
+    <h2 data-t="s5Title"></h2>
+
+    <p class="hint" data-t="shortcutIos"></p>
+    <div class="linkrow"><span class="lbl" data-t="btnUnlock"></span><pre class="copy">bluefy://open?url=https%3A%2F%2Flaufbursche42.github.io%2Ftrbm-unlock%2F%3Fdo%3Dunlock</pre></div>
+    <div class="linkrow"><span class="lbl" data-t="btnLock"></span><pre class="copy">bluefy://open?url=https%3A%2F%2Flaufbursche42.github.io%2Ftrbm-unlock%2F%3Fdo%3Dlock</pre></div>
+
+    <hr class="sep">
+    <p class="hint" data-t="shortcutAndroid"></p>
+    <div class="linkrow"><span class="lbl" data-t="btnUnlock"></span><pre class="copy">https://laufbursche42.github.io/trbm-unlock/?do=unlock</pre></div>
+    <div class="linkrow"><span class="lbl" data-t="btnLock"></span><pre class="copy">https://laufbursche42.github.io/trbm-unlock/?do=lock</pre></div>
+
+    <p class="hint" data-t="shortcutNote"></p>
+  </div>
+
+  <div class="card">
+    <h2 data-t="s6Title"></h2>
+    <pre id="log"></pre>
+  </div>
+
+  <footer class="foot">
+    <span class="foot-links">
+      <a id="link-guide" href="GUIDE.de.md" data-doc="GUIDE" data-t="footGuide"></a>
+      <a href="https://github.com/Laufbursche42/trbm-unlock" target="_blank" rel="noopener" data-t="footSource"></a>
+      <a id="link-readme" href="README.md" data-doc="README" data-t="footReadme"></a>
+      <a id="link-disclaimer" href="#" data-t="footDisclaimer"></a>
+      <a id="link-license" href="LICENSE.de.md" data-doc="LICENSE" data-t="footLicense"></a>
+      <a id="link-privacy" href="PRIVACY.de.md" data-doc="PRIVACY" data-t="footPrivacy"></a>
+      <a id="link-trademarks" href="TRADEMARKS.de.md" data-doc="TRADEMARKS" data-t="footTrademarks"></a>
+    </span>
+    <span class="ver" id="build-ver"></span>
+  </footer>
+</div>
+
+<dialog id="flash-warn">
+  <div class="dlg-body">
+    <h3 data-t="dlgTitle"></h3>
+    <p class="hint" id="dlg-file"></p>
+    <ul id="dlg-list"></ul>
+    <label class="consent-row" for="dlg-consent">
+      <input type="checkbox" id="dlg-consent">
+      <span data-t="dlgConsent"></span>
+    </label>
+    <p class="hint"><a href="#" id="dlg-disclaimer" data-t="footDisclaimer"></a></p>
+  </div>
+  <div class="dlg-foot">
+    <button id="btn-warn-cancel" data-t="dlgNo"></button>
+    <button class="primary" id="btn-warn-ok" disabled data-t="dlgYes"></button>
+  </div>
+</dialog>
+
+<dialog id="led" aria-labelledby="led-title">
+  <div class="doc-head">
+    <h3 id="led-title" data-t="ledTitle"></h3>
+    <button type="button" id="led-close">&times;</button>
+  </div>
+  <div class="dlg-body">
+    <p class="hint" id="led-preview" data-t="ledPreview" hidden></p>
+    <p class="hint" id="led-live" data-t="ledLive" hidden></p>
+
+    <div class="led-row-inline">
+      <label for="led-on" data-t="ledOn"></label>
+      <span class="switch"><input type="checkbox" id="led-on"><span></span></span>
+    </div>
+
+    <div class="led-row">
+      <label for="led-bright" data-t="ledBright"></label>
+      <div class="led-slider">
+        <input type="range" id="led-bright" min="1" max="100" step="1" value="100">
+        <span id="led-bright-val">100 %</span>
+      </div>
+    </div>
+    <p class="warn" data-t="ledBrightWarn"></p>
+
+    <div class="led-row">
+      <label for="led-color" data-t="ledColor"></label>
+      <input type="color" id="led-color" value="#ffffff">
+    </div>
+
+    <div class="led-row">
+      <label id="led-effect-label" data-t="ledEffect"></label>
+      <div class="picker" id="led-effect">
+        <button type="button" class="picker-btn" id="led-effect-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="led-effect-label led-effect-btn"></button>
+        <div class="picker-list" id="led-effect-list" role="listbox" hidden></div>
+      </div>
+    </div>
+    <p class="hint" data-t="ledEffectHint"></p>
+  </div>
+  <div class="dlg-foot">
+    <button class="primary" id="led-close-2" data-t="docClose"></button>
+  </div>
+</dialog>
+
+<dialog id="led-warn">
+  <div class="dlg-body">
+    <h3 data-t="ledWarnTitle"></h3>
+    <p class="danger" data-t="ledWarnRoad"></p>
+    <p class="warn" data-t="ledWarnBright"></p>
+    <label class="consent-row" for="led-warn-skip">
+      <input type="checkbox" id="led-warn-skip">
+      <span data-t="ledWarnSkip"></span>
+    </label>
+  </div>
+  <div class="dlg-foot">
+    <button id="btn-led-warn-cancel" data-t="dlgNo"></button>
+    <button class="primary" id="btn-led-warn-ok" data-t="ledWarnOk"></button>
+  </div>
+</dialog>
+
+<dialog id="err" aria-labelledby="err-title">
+  <div class="doc-head">
+    <h3 id="err-title" data-t="errTitle"></h3>
+    <button type="button" id="err-close">&times;</button>
+  </div>
+  <div class="dlg-body">
+    <p class="hint" data-t="errHint"></p>
+    <div id="err-list"></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="primary" id="err-close-2" data-t="docClose"></button>
+  </div>
+</dialog>
+
+<dialog id="bat" aria-labelledby="bat-title">
+  <div class="doc-head">
+    <h3 id="bat-title" data-t="batTitle"></h3>
+    <button type="button" id="bat-close">&times;</button>
+  </div>
+  <div class="dlg-body">
+    <p class="hint" data-t="batHint"></p>
+    <h4 class="dlg-sec" data-t="batHealthTitle"></h4>
+    <div id="bat-health"></div>
+    <hr class="sep">
+    <h4 class="dlg-sec" data-t="batPackTitle"></h4>
+    <div id="bat-pack"></div>
+    <hr class="sep">
+    <h4 class="dlg-sec" data-t="batCellsTitle"></h4>
+    <div class="grid cells" id="bat-cells"></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="primary" id="bat-close-2" data-t="docClose"></button>
+  </div>
+</dialog>
+
+<dialog id="doc" aria-labelledby="doc-title">
+  <div class="doc-head">
+    <h3 id="doc-title"></h3>
+    <button type="button" id="doc-x">&times;</button>
+  </div>
+  <div class="doc-body" id="doc-body"></div>
+  <div class="doc-foot">
+    <button type="button" id="doc-close" data-t="docClose"></button>
+  </div>
+</dialog>
+
+<script src="ota.js?v=69"></script>
+<script src="i18n.js?v=69"></script>
+<script src="app.js?v=69"></script>
+<script src="led.js?v=69"></script>
+</body>
+</html>
