@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v5';
+const BUILD = 'v6';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -286,6 +286,21 @@ function confirmLink() {
   maybeRunDeepAction();
 }
 
+// The unlock (per-gear speed values) was reverse-engineered on firmware 3.4.6. Other firmwares (e.g.
+// 3.4.8) behave differently, so if the controller reports anything else we warn once and name the
+// version. The version comes from the 55 43 frame (t[2].t[3].t[4]) parsed in dispatch().
+const SUPPORTED_FW = '3.4.6';
+let fwWarned = false;
+function checkFwVersion() {
+  if (fwWarned || !T.swVer || T.swVer === SUPPORTED_FW) return;
+  fwWarned = true;
+  const msg = $('fwwarn-msg');
+  if (msg) msg.textContent = fmt(t('fwWarnMsg'), { ver: T.swVer });
+  const dlg = $('fwwarn');
+  if (dlg && dlg.showModal && !dlg.open) dlg.showModal();
+  log('firmware ' + T.swVer + ' is not the supported ' + SUPPORTED_FW);
+}
+
 function dispatch(t) {
   if (!diagParsed) { diagParsed = true; log('telemetry ok, first frame 0x' + (t[1] & 0xFF).toString(16)); }
   confirmLink();                 // first real frame proves the device is truly here -> now "connected"
@@ -349,6 +364,7 @@ function dispatch(t) {
       // patched firmwares stamp into the hwVer major byte. On stock firmware t[6] is usually 0.
       if ((t[2] & 0xFF) > 0) T.swVer = (t[2] & 0xFF) + '.' + (t[3] & 0xFF) + '.' + (t[4] & 0xFF);
       T.fwBuild = t[6] & 0xFF;
+      checkFwVersion();      // warn once if this is not the supported 3.4.6
       break;
     default: break;
   }
@@ -1149,6 +1165,7 @@ function resetTiles() {                                 // no telemetry -> show 
   // show the placeholder again until the new link delivers its own frames.
   T.have52 = false; T.have53 = false; T.cellMv = null; T.errors = null; T.ecu1 = null; T.ecu2 = null;
   S.received71 = false;
+  T.swVer = null; fwWarned = false;   // a reconnect re-reads the version and may warn again
   if ($('t-swver')) $('t-swver').textContent = '-';
   if ($('t-fwver')) $('t-fwver').textContent = '-';
   refreshToggle();
@@ -1752,6 +1769,9 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   ['bat-close', 'bat-close-2'].forEach(id => {
     $(id).addEventListener('click', () => { const d = $('bat'); if (d) d.close(); });
+  });
+  ['fwwarn-close', 'fwwarn-close-2'].forEach(id => {
+    const el = $(id); if (el) el.addEventListener('click', () => { const d = $('fwwarn'); if (d) d.close(); });
   });
   $('err').addEventListener('close', stopErrorReports);
   $('bat').addEventListener('close', stopBatteryInfo);

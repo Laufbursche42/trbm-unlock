@@ -26,6 +26,8 @@ window.I18N = {
     btnLock: "Sperren",
     controlsHint: "<b>Entsperren</b> schreibt die oben eingestellten Geschwindigkeiten auf die drei Gänge, <b>Sperren</b> setzt alle drei wieder auf 22 km/h. Der Knopf zeigt jeweils die nächste sinnvolle Aktion.",
     feasNote: "Machbarkeitsstudie: Diese Seite zeigt, was das Bluetooth-Protokoll eines Teverun-Rollers technisch möglich macht, sie ist kein fertiges Produkt. Fehlerfreier Betrieb wird nicht versprochen, es gibt keinerlei Gewährleistung. Alles, was du hier tust, tust du auf eigenes Risiko.",
+    fwWarnTitle: "Firmware nicht unterstützt",
+    fwWarnMsg: "Diese Seite funktioniert bisher nur mit der alten Firmware 3.4.6. Dein Scooter meldet Version {ver}. Sperren und Entsperren wird damit voraussichtlich nicht funktionieren.",
     gearHint: "Diese drei Werte sind die entsperrten Geschwindigkeiten für die deutschen Gänge (intern ESC-Gang 2, 3 und 4). <b>Entsperren</b> schreibt sie, <b>Sperren</b> setzt alle drei auf 22 km/h. Gang 1 und Gang 5 gibt es nur im Ausland und werden nicht angefasst.",
 
     rowSwVer: "Firmware-Version:",
@@ -213,6 +215,8 @@ window.I18N = {
     btnLock: "Lock",
     controlsHint: "<b>Unlock</b> writes the speeds set above to the three gears, <b>Lock</b> sets all three back to 22 km/h. The button shows the next sensible action.",
     feasNote: "Feasibility study: this page shows what a Teverun scooter's Bluetooth protocol makes possible, it is not a finished product. Error-free operation is not promised and there is no warranty of any kind. Everything you do here you do at your own risk.",
+    fwWarnTitle: "Firmware not supported",
+    fwWarnMsg: "This page currently only works with the old firmware 3.4.6. Your scooter reports version {ver}. Lock and unlock will most likely not work with it.",
     gearHint: "These three values are the unlocked speeds for the German gears (internally ESC gears 2, 3 and 4). <b>Unlock</b> writes them, <b>Lock</b> sets all three to 22 km/h. Gears 1 and 5 exist only abroad and are left untouched.",
 
     rowSwVer: "Firmware version:",
