@@ -43,25 +43,23 @@
     </div>
     <div class="set-row">
       <label>Gang 1</label>
-      <input id="g1-in" type="number" min="1" max="100" value="45">
+      <input id="g1-in" type="number" min="1" max="100" value="45" title="Speed">
+      <input id="g1-fs" type="number" min="0" max="15" placeholder="Anf. v" title="Anfahrt vorne">
+      <input id="g1-rs" type="number" min="0" max="15" placeholder="Anf. h" title="Anfahrt hinten">
     </div>
     <div class="set-row">
       <label>Gang 2</label>
-      <input id="g2-in" type="number" min="1" max="100" value="60">
+      <input id="g2-in" type="number" min="1" max="100" value="60" title="Speed">
+      <input id="g2-fs" type="number" min="0" max="15" placeholder="Anf. v" title="Anfahrt vorne">
+      <input id="g2-rs" type="number" min="0" max="15" placeholder="Anf. h" title="Anfahrt hinten">
     </div>
     <div class="set-row">
       <label>Gang 3</label>
-      <input id="g3-in" type="number" min="1" max="100" value="80">
+      <input id="g3-in" type="number" min="1" max="100" value="80" title="Speed">
+      <input id="g3-fs" type="number" min="0" max="15" placeholder="Anf. v" title="Anfahrt vorne">
+      <input id="g3-rs" type="number" min="0" max="15" placeholder="Anf. h" title="Anfahrt hinten">
     </div>
-    <div class="set-row">
-      <label>Anfahrt vorne (Test)</label>
-      <input id="fstart-in" type="number" min="0" max="15" placeholder="leer = unverändert">
-    </div>
-    <div class="set-row">
-      <label>Anfahrt hinten (Test)</label>
-      <input id="rstart-in" type="number" min="0" max="15" placeholder="leer = unverändert">
-    </div>
-    <p class="hint">Anfahrts-Level: die App lässt nur 1 bis 5 zu, technisch passt 0 bis 15 in den Frame. Leer lassen lässt den Wert unverändert; ein Wert wird beim nächsten Entsperren/Sperren mitgeschrieben - zum Testen, ob die Firmware mehr als 5 annimmt.</p>
+    <p class="hint">Je Gang: Speed, Anfahrt vorne (v), Anfahrt hinten (h). Die App lässt beim Anfahrts-Level nur 1 bis 5 zu, technisch passt 0 bis 15 in den Frame - zum Testen, ob die Firmware mehr annimmt. Leere Anfahrts-Felder senden den aktuellen Wert dieses Gangs mit (also unverändert); ganz weglassen geht nicht, weil der 0x18-Frame das Byte immer enthält.</p>
     <p class="hint" data-t="gearHint"></p>
     <p class="hint" data-t="controlsHint"></p>
     <div class="row"><span class="fin"><span data-t="rowSwVer"></span> <span id="t-swver">-</span></span></div>

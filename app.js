@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v8';
+const BUILD = 'v9';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -785,19 +785,22 @@ const DE_GEARS = [2, 3, 4];
 // else (eabs/start levels, currents, global max via S.speedLimit) is mirrored from the last 55 71.
 // vals[i] is the speed for DE_GEARS[i]. Confirmed lever from the captures: Byte10 = 22 locked, 60 open.
 function writeGearSpeeds(vals) {
-  const fsIn = readLevel('fstart-in');   // null = mirror unchanged; number = test value (0..15)
-  const rsIn = readLevel('rstart-in');
+  const notes = [];
   for (let i = 0; i < DE_GEARS.length; i++) {
     const g = DE_GEARS[i];
+    const rider = i + 1;                 // rider-facing gear label (1..3)
     const c = gearCache[g] || {};
     const eabs = (c.eabsLevel != null) ? c.eabsLevel : S.eabsLevel;
+    const fsIn = readLevel('g' + rider + '-fs');   // per gear; null = mirror unchanged
+    const rsIn = readLevel('g' + rider + '-rs');
     const fs = (fsIn != null) ? fsIn : ((c.fStartLevel != null) ? c.fStartLevel : S.fStartLevel);
     const rs = (rsIn != null) ? rsIn : ((c.rStartLevel != null) ? c.rStartLevel : S.rStartLevel);
     const fc = (c.fCurrent != null) ? c.fCurrent : S.fCurrent;
     const rc = (c.rCurrent != null) ? c.rCurrent : S.rCurrent;
     enqueue(buildSettingFrame(2, g, eabs, fs, rs, vals[i] & 0xFF, fc, rc));
+    if (fsIn != null || rsIn != null) notes.push('Gang ' + rider + ' Anfahrt v=' + fs + ' h=' + rs);
   }
-  if (fsIn != null || rsIn != null) log('Anfahrts-Level Test: vorne=' + (fsIn != null ? fsIn : 'unverändert') + ' hinten=' + (rsIn != null ? rsIn : 'unverändert'));
+  if (notes.length) log('Anfahrts-Level Test: ' + notes.join(' | '));
 }
 
 function unlock() {
