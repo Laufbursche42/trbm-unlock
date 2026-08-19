@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'trbm-v3 (per-gear DE 2-3-4; base lb v69)';   // logged on load so a tester's log reveals the build
+const BUILD = 'trbm-v4 (no wheel-cruise-flash; base lb v69)';   // logged on load so a tester's log reveals the build
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -1134,9 +1134,8 @@ function refreshToggle() {
   btn.disabled = !(connected && S.received71);
 }
 function renderLive() {
-  $('t-wheel').textContent = S.received71 ? S.wheel.toFixed(1) : '-';
-  // Repurposed tile: show the live per-gear speed (Byte10) - the value that actually differs between
-  // locked and unlocked on the Blade - instead of the (irrelevant) cruise mode.
+  // Tile shows the live per-gear speed (Byte10) - the value that actually differs between locked and
+  // unlocked on the Blade. Wheel + cruise tiles are gone (the Blade has neither).
   if ($('t-cruise')) $('t-cruise').textContent = S.received71 ? String(S.assistSpeedLimit) : '-';
   $('t-swver').textContent = T.swVer ? ('R' + T.swVer) : '-';
   $('t-fwver').textContent = (T.fwBuild != null && T.fwBuild > 0) ? ('V' + T.fwBuild) : '-';
@@ -1157,8 +1156,8 @@ function resetTiles() {                                 // no telemetry -> show 
   // show the placeholder again until the new link delivers its own frames.
   T.have52 = false; T.have53 = false; T.cellMv = null; T.errors = null; T.ecu1 = null; T.ecu2 = null;
   S.received71 = false;
-  $('t-wheel').textContent = '-';
-  $('t-cruise').textContent = '-';
+  if ($('t-cruise')) $('t-cruise').textContent = '-';
+  if ($('cur-state')) $('cur-state').textContent = '-';
   refreshToggle();
 }
 // Wheel + cruise: editable only once the scooter reported its config (55 71). Prefilled ONCE with
@@ -1751,12 +1750,6 @@ window.addEventListener('DOMContentLoaded', () => {
   $('btn-toggle').addEventListener('click', () => {
     if ($('btn-toggle').dataset.action === 'unlock') unlock(); else lock();
   });
-  $('btn-set-wheel').addEventListener('click', () => {
-    const v = parseFloat($('wheel-in').value);
-    if (!isNaN(v) && v > 0) setWheel(v);
-  });
-  $('btn-set-cruise').addEventListener('click', () => setCruise(parseInt($('cruise-in').value, 10)));
-
   // Error reports and battery info. Esc closes a dialog too, so the refresh is stopped from the
   // close event rather than from the buttons.
   $('btn-err').addEventListener('click', openErrorReports);
@@ -1770,42 +1763,9 @@ window.addEventListener('DOMContentLoaded', () => {
   $('err').addEventListener('close', stopErrorReports);
   $('bat').addEventListener('close', stopBatteryInfo);
 
-  // Firmware flasher. Clearing the input first makes re-picking the same file fire "change" again.
-  $('btn-pick').addEventListener('click', () => {
-    const f = $('fw-file');
-    if (f) { f.value = ''; f.click(); }
-  });
-  $('fw-file').addEventListener('change', ev => {
-    const fs = ev.target.files;
-    onFwFile(fs && fs.length ? fs[0] : null);
-  });
-  $('btn-flash').addEventListener('click', () => {
-    if (otaEngine) {
-      otaEpoch++;              // drop the frames still queued for this run before the engine unwinds
-      otaEngine.cancel();
-      return;
-    }
-    askFlash();
-  });
-  $('btn-warn-cancel').addEventListener('click', () => { const d = $('flash-warn'); if (d) d.close(); });
-  // Esc closes the dialog as well, so the keep-alive comes back from the close event, not the button.
-  $('flash-warn').addEventListener('close', () => {
-    flashArmed = false;              // the confirmation window is over, whichever way it ended
-    refreshFlashButtons();
-    if (!flashOwnsLink() && connected && notifyReady) startKeepAlive();
-  });
-  $('dlg-consent').addEventListener('change', syncFlashConsent);
-  // Opens on top of the confirmation, which stays open behind it: reading the terms is not an answer.
-  $('dlg-disclaimer').addEventListener('click', e => { e.preventDefault(); openDisclaimer(); });
-  $('btn-warn-ok').addEventListener('click', () => {
-    const consent = $('dlg-consent');
-    if (!consent || !consent.checked) return;
-    startFlash();                    // fences the link before the close event can restart the keep-alive
-    const d = $('flash-warn'); if (d) d.close();
-  });
+  // Firmware flashing is removed on the Blade build (the Blade cannot be flashed this way). The OTA
+  // internals in this file stay inert (otaEngine is always null), so the link/queue guards keep working.
 
-  refreshSettingsInputs();   // start disabled; enabled + prefilled once a scooter reports its config
-  refreshFlashButtons();     // start disabled; both need a link and Flash needs a checked file
   refreshInfoButtons();      // start disabled; both views need a link that delivers frames
   if (!navigator.bluetooth) log('Web Bluetooth not available. On iOS use the Bluefy browser.');
   // Someone arriving at .../#disclaimer meant the terms, an address written in the documents.
