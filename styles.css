@@ -327,3 +327,10 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* Firmware-warning modal: the reported version, emphasised via CSS (not inline HTML). */
 .fw-ver { font-weight: 600; color: var(--value); white-space: nowrap; }
+
+/* Per-gear settings table: label column plus Speed / Anfahrt v / Anfahrt h, aligned with headers. */
+.gears { display: flex; flex-direction: column; gap: 8px; }
+.gear-row { display: grid; grid-template-columns: 52px 1fr 1fr 1fr; gap: 8px; align-items: center; }
+.gear-row > label { margin: 0; text-align: left; }
+.gear-row > input { flex: none; width: 100%; text-align: center; padding: 9px 6px; }
+.gear-head > span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; text-align: center; }

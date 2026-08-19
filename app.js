@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v9';
+const BUILD = 'v10';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -791,10 +791,13 @@ function writeGearSpeeds(vals) {
     const rider = i + 1;                 // rider-facing gear label (1..3)
     const c = gearCache[g] || {};
     const eabs = (c.eabsLevel != null) ? c.eabsLevel : S.eabsLevel;
-    const fsIn = readLevel('g' + rider + '-fs');   // per gear; null = mirror unchanged
+    const fsIn = readLevel('g' + rider + '-fs');   // per gear; null (empty) = standard 5
     const rsIn = readLevel('g' + rider + '-rs');
-    const fs = (fsIn != null) ? fsIn : ((c.fStartLevel != null) ? c.fStartLevel : S.fStartLevel);
-    const rs = (rsIn != null) ? rsIn : ((c.rStartLevel != null) ? c.rStartLevel : S.rStartLevel);
+    // We only ever see the ACTIVE gear in telemetry, so we cannot mirror an unseen gear's level.
+    // Empty field therefore writes the standard start level 5 (uniform across gears in practice),
+    // not a guessed mirror.
+    const fs = (fsIn != null) ? fsIn : 5;
+    const rs = (rsIn != null) ? rsIn : 5;
     const fc = (c.fCurrent != null) ? c.fCurrent : S.fCurrent;
     const rc = (c.rCurrent != null) ? c.rCurrent : S.rCurrent;
     enqueue(buildSettingFrame(2, g, eabs, fs, rs, vals[i] & 0xFF, fc, rc));
