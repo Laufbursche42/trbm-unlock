@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'trbm-v1 (cruise-lock; base lb v69)';   // logged on load so a tester's log reveals the build
+const BUILD = 'trbm-v2 (gear-speed lock; base lb v69)';   // logged on load so a tester's log reveals the build
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -292,11 +292,11 @@ function dispatch(t) {
   switch (t[1]) {
     case 0x71:
       updateFrom71(t);
-      // Stock firmware: the "lock" is the eKFV clamp, driven by the cruise/Tempomat lever. The ESC
-      // streams the active cruise mode back in 55 71 t[4] (parsed into S.cruise). cruise 0 = clamped
-      // (locked / 22), cruise != 0 = clamp lifted (unlocked). S.systemStatus6 is the ESC's own clamp
-      // bit and should track this; it is logged for confirmation but cruise is the authoritative lever.
-      T.lock = (S.cruise === 0) ? 'locked' : 'unlocked';
+      // On the Blade the lock state is NOT readable from telemetry: cruise (t[4]) and systemStatus6
+      // (t[17] bit6) stayed identical locked vs unlocked, and the global speed limit reads 100 either
+      // way. What actually differs is the per-gear speed the app writes. So we do NOT derive T.lock
+      // from telemetry - it latches on the user's Entsperren/Sperren action. The live per-gear + max
+      // values are shown as status so the rider sees exactly what is set.
       T.gear = t[3] & 0xFF;
       onSettingsFrame();
       maybeRunDeepAction();      // a shortcut's ?do=lock waits for this first 55 71
@@ -728,28 +728,49 @@ function setCruise(v) {
   log('cruise set to ' + v + ' (saved)');
 }
 
-// Lock/unlock on stock firmware via the cruise/Tempomat lever inside the normal 0x18 settings frame.
-// Unlock writes cruise = UNLOCK_CRUISE (Tempomat on) -> the ESC lifts the eKFV clamp and switches the
-// speed scale. Lock writes cruise = 0 -> the clamp comes back. Both need a prior 55 71 (requireReady)
-// because buildSettingFrame serialises the whole controller state; the streamed cruise confirms it on
-// the next frame and drives refreshToggle. The FIN / BLE name does not change, so there is no reconnect.
+// Lock/unlock on the Blade (ESC + MCU, NO IVCU): the eKFV limit is not a firmware clamp, it is just
+// the speed values the app writes. So unlock = write a HIGH per-gear speed + max speed on every gear,
+// lock = write the low eKFV values. The MCU applies whatever it is told. This mirrors what the pimped
+// stock app does (it only removes the UI gate so the app sends high values). Cruise / systemStatus6
+// are NOT the lever on the Blade (both stayed identical locked vs unlocked in the captures).
+
+function readNum(id, dflt) {
+  const el = $(id);
+  const v = el ? parseInt(el.value, 10) : NaN;
+  return (isNaN(v) || v < 0) ? dflt : Math.min(v, 100);
+}
+
+// Write per-gear speed + global max onto every gear (1..5) via one 0x18 frame per gear. Each gear
+// keeps its own eabs/start levels and currents from the last 55 71 (gearCache); only the speed and
+// the global max change. maxSpeed goes into a[11] (global) through S.speedLimit.
+function writeSpeedAllGears(perGearSpeed, maxSpeed) {
+  S.speedLimit = maxSpeed & 0xFF;
+  for (let g = 1; g <= 5; g++) {
+    const c = gearCache[g] || {};
+    const eabs = (c.eabsLevel != null) ? c.eabsLevel : S.eabsLevel;
+    const fs = (c.fStartLevel != null) ? c.fStartLevel : S.fStartLevel;
+    const rs = (c.rStartLevel != null) ? c.rStartLevel : S.rStartLevel;
+    const fc = (c.fCurrent != null) ? c.fCurrent : S.fCurrent;
+    const rc = (c.rCurrent != null) ? c.rCurrent : S.rCurrent;
+    enqueue(buildSettingFrame(2, g, eabs, fs, rs, perGearSpeed & 0xFF, fc, rc));
+  }
+}
+
 function unlock() {
   if (!requireReady()) return;
-  S.cruise = UNLOCK_CRUISE;
-  persistCruise(S.cruise);
-  log('unlock -> cruise ' + UNLOCK_CRUISE + ' (Tempomat on, lifts eKFV clamp)');
-  writeWheelCruiseAllGears();
-  T.lock = 'unlocked';     // optimistic; the streamed 55 71 cruise confirms/corrects it
+  const pg = readNum('unlock-pg-in', 40), mx = readNum('max-in', 100);
+  writeSpeedAllGears(pg, mx);
+  T.lock = 'unlocked';
+  log('entsperrt: per-Gang ' + pg + ', Max ' + mx + ' auf alle Gaenge geschrieben');
   refreshToggle();
 }
 
 function lock() {
   if (!requireReady()) return;
-  S.cruise = 0;
-  persistCruise(0);
-  log('lock -> cruise 0 (Tempomat off, re-imposes eKFV clamp)');
-  writeWheelCruiseAllGears();
+  const pg = readNum('lock-pg-in', 22), mx = readNum('max-in', 100);
+  writeSpeedAllGears(pg, mx);
   T.lock = 'locked';
+  log('gesperrt: per-Gang ' + pg + ', Max ' + mx + ' auf alle Gaenge geschrieben');
   refreshToggle();
 }
 
@@ -1101,19 +1122,25 @@ function refreshToggle() {
   const btn = $('btn-toggle');
   if (!btn) return;
   if (otaEngine) { btn.disabled = true; return; }   // a flash owns the link, no lock frames meanwhile
-  const known = (T.lock === 'locked' || T.lock === 'unlocked');
-  const locked = (T.lock === 'locked');
-  // Without a link there is nothing being read, so the idle label stands in for the unknown state.
-  btn.textContent = known ? (locked ? t('btnUnlock') : t('btnLock'))
-                          : (connected ? t('btnReading') : t('btnUnlock'));
+  // The Blade gives no readable lock state, so the button is NOT gated on one: it is actionable as
+  // soon as a 55 71 arrived (a per-gear write needs the mirrored state). The label follows the
+  // user-latched T.lock; unknown defaults to "unlock" (a fresh eKFV Blade is the locked one).
+  const locked = (T.lock !== 'unlocked');
+  btn.textContent = locked ? t('btnUnlock') : t('btnLock');
   btn.dataset.action = locked ? 'unlock' : 'lock';
-  btn.disabled = !linkConfirmed || !known;   // actionable only once a real 55 71 gave the state
+  btn.disabled = !(connected && S.received71);
 }
 function renderLive() {
   $('t-wheel').textContent = S.received71 ? S.wheel.toFixed(1) : '-';
-  $('t-cruise').textContent = S.received71 ? (cruiseName(S.cruise) || S.cruise) : '-';
+  // Repurposed tile: show the live per-gear speed (Byte10) - the value that actually differs between
+  // locked and unlocked on the Blade - instead of the (irrelevant) cruise mode.
+  if ($('t-cruise')) $('t-cruise').textContent = S.received71 ? String(S.assistSpeedLimit) : '-';
   $('t-swver').textContent = T.swVer ? ('R' + T.swVer) : '-';
   $('t-fwver').textContent = (T.fwBuild != null && T.fwBuild > 0) ? ('V' + T.fwBuild) : '-';
+  const cs = $('cur-state');
+  if (cs) cs.textContent = S.received71
+    ? ('Gang ' + S.gear + ' | per-Gang ' + S.assistSpeedLimit + ' | Max ' + S.speedLimit)
+    : '-';
   refreshSettingsInputs();
   refreshToggle();
   refreshInfoButtons();

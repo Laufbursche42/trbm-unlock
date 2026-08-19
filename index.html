@@ -40,13 +40,26 @@
       <button class="primary span2" id="btn-conn"></button>
       <button class="primary span2" id="btn-toggle" disabled></button>
     </div>
+    <div class="set-row">
+      <label>Max-Speed (global)</label>
+      <input id="max-in" type="number" min="1" max="100" value="100">
+    </div>
+    <div class="set-row">
+      <label>Entsperren: Speed per Gang</label>
+      <input id="unlock-pg-in" type="number" min="1" max="100" value="40">
+    </div>
+    <div class="set-row">
+      <label>Sperren: Speed per Gang</label>
+      <input id="lock-pg-in" type="number" min="1" max="100" value="22">
+    </div>
+    <p class="hint">Entsperren/Sperren schreibt per-Gang-Speed + Max auf alle Gaenge (Gang 1 bis 5) ueber den 0x18-Rahmen. Der Blade hat keine IVCU, die MCU uebernimmt die Werte direkt. Aktuell gelesen: <b id="cur-state">-</b></p>
     <p class="hint" data-t="controlsHint"></p>
   </div>
 
   <div class="card">
     <div class="grid">
       <div class="tile"><b id="t-wheel">-</b><small data-t="tileWheel"></small></div>
-      <div class="tile"><b id="t-cruise">-</b><small data-t="tileCruise"></small></div>
+      <div class="tile"><b id="t-cruise">-</b><small>Speed/Gang</small></div>
     </div>
     <div class="row"><span class="fin"><span data-t="rowSwVer"></span> <span id="t-swver">-</span></span></div>
     <div class="row"><span class="fin"><span data-t="rowFwVer"></span> <span id="t-fwver">-</span></span></div>
