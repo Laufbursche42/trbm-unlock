@@ -24,11 +24,10 @@ window.I18N = {
     btnDisconnect: "Trennen",
     btnUnlock: "Entsperren",
     btnLock: "Sperren",
-    btnReading: "liest...",
-    controlsHint: "Der Button zeigt die Aktion zum aktuellen Zustand, live vom Scooter gelesen: <b>Entsperren</b>, wenn er gesperrt ist, <b>Sperren</b>, wenn er offen ist. Beides schaltet die Geschwindigkeitssperre direkt über BLE (Befehl 0x1B).",
+    controlsHint: "<b>Entsperren</b> schreibt die oben eingestellten Geschwindigkeiten auf die drei Gänge, <b>Sperren</b> setzt alle drei wieder auf 22 km/h. Der Knopf zeigt jeweils die nächste sinnvolle Aktion.",
+    feasNote: "Machbarkeitsstudie: Diese Seite zeigt, was das Bluetooth-Protokoll eines Teverun-Rollers technisch möglich macht, sie ist kein fertiges Produkt. Fehlerfreier Betrieb wird nicht versprochen, es gibt keinerlei Gewährleistung. Alles, was du hier tust, tust du auf eigenes Risiko.",
+    gearHint: "Diese drei Werte sind die entsperrten Geschwindigkeiten für die deutschen Gänge (intern ESC-Gang 2, 3 und 4). <b>Entsperren</b> schreibt sie, <b>Sperren</b> setzt alle drei auf 22 km/h. Gang 1 und Gang 5 gibt es nur im Ausland und werden nicht angefasst.",
 
-    tileWheel: "Rad",
-    tileCruise: "Tempomat",
     rowSwVer: "Firmware-Version:",
     rowFwVer: "Laufbursche-Version:",
     cruiseOff: "Aus",
@@ -92,24 +91,11 @@ window.I18N = {
     infoConnectFirst: "Verbinde zuerst den Scooter",
     infoWaiting: "Warte auf Daten vom Scooter ...",
 
-    s3Title: "Einstellungen",
-    lblWheel: "Raddurchmesser",
     phWheel: "erst verbinden",
-    btnSetWheel: "Rad setzen",
-    lblCruise: "Tempomat",
-    btnSetCruise: "Tempomat setzen",
-    settingsHint: "Beide Werte merkt sich der Browser auf diesem Gerät. Nach jedem Entsperren schreibt die Seite sie von selbst wieder in den Scooter, du musst sie also nur einmal eintragen.",
     tipWheelLocked: "Entsperre den Scooter, um die Radgröße zu ändern",
-    tipCruiseLocked: "Entsperre den Scooter, um den Tempomat zu ändern",
 
-    s4Title: "Firmware flashen",
-    iosHint: "<b>Auf dem iPhone:</b> lässt sich deine Datei in der Auswahl nicht antippen, benenn sie in <b>.txt</b> um. Am Inhalt ändert das nichts und die Seite liest ihn genauso, denn geprüft wird das Abbild selbst, nie der Dateiname.",
-    flashHint: "Wähle eine Firmware-Datei, prüfe die Meldung dazu und flashe dann. Der Scooter muss den ganzen Lauf über an und in Reichweite bleiben, etwa sieben Minuten.",
-    btnPick: "Datei wählen",
     btnFlash: "Flashen",
     btnCancel: "Abbrechen",
-    flashDanger: "<b>Brich einen laufenden Flash nicht ab.</b> Lass den Scooter an, lass diese Seite offen und bleib in Reichweite. Ein Flash, der auf halbem Weg stehen bleibt, hinterlässt einen Scooter, der nicht fährt, bis ein Flash vollständig durchläuft. Ein neuer Flash holt ihn zurück.",
-    flashHw: "<b>Hardware:</b> nur für die <b>IVCU-Hardware-Version 5.x</b>. Nicht für die \"Ali-Box\".",
 
     fwOkVcu: "Controller-Firmware angenommen",
     fwOkBms: "Batterie-Firmware angenommen",
@@ -198,7 +184,6 @@ window.I18N = {
       "<b>Keine Zusagen:</b> Wir versprechen nicht, dass diese Seite mit deinem Gerät, deinem Browser oder deinem Scooter funktioniert.",
       "<b>Haftung:</b> Für Schäden an Fahrzeug, Personen oder Dritten, die durch oder mit dieser Seite entstehen, übernehmen wir keine Haftung, soweit gesetzlich zulässig. Die Nutzung erfolgt auf eigenes Risiko."
     ],
-    dlgTitle: "Lies das, bevor du flashst",
     dlgFile: "Geflasht wird: {name}, Version {version}, {bytes} Bytes, {packets} Pakete.",
     dlgPoints: [
       "<b>Du hast diese Datei ausgewählt.</b> Geprüft werden nur Aufbau, Prüfsumme und Zieladresse. Was die Firmware im Fahrbetrieb tut, weiß diese Seite nicht.",
@@ -207,9 +192,7 @@ window.I18N = {
       "<b>Ein abgebrochener Flash hinterlässt einen Scooter, der nicht fährt</b>, bis ein Flash vollständig durchläuft. Ein neuer Flash holt ihn zurück.",
       "<b>Haftung:</b> Für Schäden durch oder mit dieser Firmware übernehmen wir keine Haftung, soweit das Gesetz es zulässt. Die Nutzung erfolgt auf eigenes Risiko."
     ],
-    dlgConsent: "Ich habe den Haftungsausschluss gelesen und flashe auf eigene Gefahr.",
     dlgNo: "Abbrechen",
-    dlgYes: "Verstanden, flashen"
   },
 
   en: {
@@ -228,11 +211,10 @@ window.I18N = {
     btnDisconnect: "Disconnect",
     btnUnlock: "Unlock",
     btnLock: "Lock",
-    btnReading: "reading...",
-    controlsHint: "The button shows the action for the current state, read live from the scooter: <b>Unlock</b> when it is locked, <b>Lock</b> when it is open. Both switch the speed lock directly over BLE (cmd 0x1B).",
+    controlsHint: "<b>Unlock</b> writes the speeds set above to the three gears, <b>Lock</b> sets all three back to 22 km/h. The button shows the next sensible action.",
+    feasNote: "Feasibility study: this page shows what a Teverun scooter's Bluetooth protocol makes possible, it is not a finished product. Error-free operation is not promised and there is no warranty of any kind. Everything you do here you do at your own risk.",
+    gearHint: "These three values are the unlocked speeds for the German gears (internally ESC gears 2, 3 and 4). <b>Unlock</b> writes them, <b>Lock</b> sets all three to 22 km/h. Gears 1 and 5 exist only abroad and are left untouched.",
 
-    tileWheel: "Wheel",
-    tileCruise: "Cruise",
     rowSwVer: "Firmware version:",
     rowFwVer: "Laufbursche version:",
     cruiseOff: "Off",
@@ -296,24 +278,11 @@ window.I18N = {
     infoConnectFirst: "Connect the scooter first",
     infoWaiting: "Waiting for data from the scooter ...",
 
-    s3Title: "Settings",
-    lblWheel: "Wheel diameter",
     phWheel: "connect first",
-    btnSetWheel: "Set wheel",
-    lblCruise: "Cruise",
-    btnSetCruise: "Set cruise",
-    settingsHint: "The browser remembers both values on this device. After every unlock the page writes them back into the scooter by itself, so you only enter them once.",
     tipWheelLocked: "Unlock the scooter to change the wheel size",
-    tipCruiseLocked: "Unlock the scooter to change cruise control",
 
-    s4Title: "Flash firmware",
-    iosHint: "<b>On an iPhone:</b> if your file cannot be tapped in the picker, rename it to <b>.txt</b>. That changes nothing about the content and the page reads it just the same, because what is checked is the image itself, never the file name.",
-    flashHint: "Pick a firmware file, read what the page says about it and then flash. The scooter must stay on and in range for the whole run, about seven minutes.",
-    btnPick: "Choose file",
     btnFlash: "Flash",
     btnCancel: "Cancel",
-    flashDanger: "<b>Do not interrupt a running flash.</b> Keep the scooter on, keep this page open and stay in range. A flash that stops halfway leaves a scooter that will not run until a flash completes. Flashing again recovers it.",
-    flashHw: "<b>Hardware:</b> for the <b>IVCU hardware version 5.x</b> only. Not for the \"Ali box\".",
 
     fwOkVcu: "Controller firmware accepted",
     fwOkBms: "Battery firmware accepted",
@@ -398,7 +367,6 @@ window.I18N = {
       "<b>No promises:</b> We do not promise that this page works with your device, your browser or your scooter.",
       "<b>Liability:</b> To the extent the law allows, we accept no liability for damage to the vehicle, to people or to third parties caused by or with this page. You use it at your own risk."
     ],
-    dlgTitle: "Read this before you flash",
     dlgFile: "About to flash: {name}, version {version}, {bytes} bytes, {packets} packets.",
     dlgPoints: [
       "<b>You picked this file.</b> Only its structure, its checksum and its target address are checked. What the firmware does out on the road is unknown to this page.",
@@ -407,8 +375,6 @@ window.I18N = {
       "<b>An interrupted flash leaves a scooter that will not run</b> until a flash completes. Flashing again recovers it.",
       "<b>Liability:</b> for damage caused by or with this firmware we accept no liability, as far as the law allows. Use at your own risk."
     ],
-    dlgConsent: "I have read the disclaimer and I flash at my own risk.",
     dlgNo: "Cancel",
-    dlgYes: "I understand, flash"
   }
 };

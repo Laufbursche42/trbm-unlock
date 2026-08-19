@@ -132,7 +132,8 @@ pre#log { margin: 0; background: var(--field); border: 1px solid var(--line); bo
   border-radius: 8px; padding: 9px 11px; margin: 0; }
 .danger b { color: var(--bad-strong); }
 code { font-family: var(--mono); font-size: 12px; background: var(--field); border: 1px solid var(--line);
-  border-radius: 5px; padding: 1px 5px; color: var(--value); word-break: break-all; }
+  border-radius: 5px; padding: 1px 5px; color: var(--value); overflow-wrap: break-word; word-break: normal;
+  white-space: nowrap; }
 .linkrow { display: flex; flex-direction: column; gap: 5px; }
 .linkrow .lbl { color: var(--label); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
 .copy { margin: 0; font-family: var(--mono); font-size: 11.5px; background: var(--field); border: 1px solid var(--line);

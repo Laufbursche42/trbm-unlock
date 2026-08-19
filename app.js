@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v4';
+const BUILD = 'v5';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -773,7 +773,7 @@ function lock() {
   if (!requireReady()) return;
   writeGearSpeeds([22, 22, 22]);
   T.lock = 'locked';
-  log('gesperrt: alle DE-Gaenge = 22');
+  log('gesperrt: alle DE-Gänge = 22');
   refreshToggle();
 }
 
@@ -1134,15 +1134,8 @@ function refreshToggle() {
   btn.disabled = !(connected && S.received71);
 }
 function renderLive() {
-  // Tile shows the live per-gear speed (Byte10) - the value that actually differs between locked and
-  // unlocked on the Blade. Wheel + cruise tiles are gone (the Blade has neither).
-  if ($('t-cruise')) $('t-cruise').textContent = S.received71 ? String(S.assistSpeedLimit) : '-';
-  $('t-swver').textContent = T.swVer ? ('R' + T.swVer) : '-';
-  $('t-fwver').textContent = (T.fwBuild != null && T.fwBuild > 0) ? ('V' + T.fwBuild) : '-';
-  const cs = $('cur-state');
-  if (cs) cs.textContent = S.received71
-    ? ('Gang ' + S.gear + ' | per-Gang ' + S.assistSpeedLimit + ' | Max ' + S.speedLimit)
-    : '-';
+  if ($('t-swver')) $('t-swver').textContent = T.swVer ? ('R' + T.swVer) : '-';
+  if ($('t-fwver')) $('t-fwver').textContent = (T.fwBuild != null && T.fwBuild > 0) ? ('V' + T.fwBuild) : '-';
   refreshSettingsInputs();
   refreshToggle();
   refreshInfoButtons();
@@ -1156,8 +1149,8 @@ function resetTiles() {                                 // no telemetry -> show 
   // show the placeholder again until the new link delivers its own frames.
   T.have52 = false; T.have53 = false; T.cellMv = null; T.errors = null; T.ecu1 = null; T.ecu2 = null;
   S.received71 = false;
-  if ($('t-cruise')) $('t-cruise').textContent = '-';
-  if ($('cur-state')) $('cur-state').textContent = '-';
+  if ($('t-swver')) $('t-swver').textContent = '-';
+  if ($('t-fwver')) $('t-fwver').textContent = '-';
   refreshToggle();
 }
 // Wheel + cruise: editable only once the scooter reported its config (55 71). Prefilled ONCE with

@@ -31,6 +31,7 @@
   <div class="card">
     <h2 data-t="s1Title"></h2>
     <p class="hint" data-t="sub"></p>
+    <p class="warn" data-t="feasNote"></p>
     <p class="hint" data-t="startHintGuide"></p>
   </div>
 
@@ -52,14 +53,8 @@
       <label>Gang 3</label>
       <input id="g3-in" type="number" min="1" max="100" value="80">
     </div>
-    <p class="hint">Diese drei Werte sind die entsperrten Speeds fuer die deutschen Gaenge (intern ESC-Gang 2/3/4). <b>Entsperren</b> schreibt sie, <b>Sperren</b> setzt alle drei auf 22. Gang 1 und Gang 5 gibt es nur im Ausland und werden nicht angefasst. Der Blade hat keine IVCU, die MCU uebernimmt die Werte direkt. Aktuell gelesen: <b id="cur-state">-</b></p>
+    <p class="hint" data-t="gearHint"></p>
     <p class="hint" data-t="controlsHint"></p>
-  </div>
-
-  <div class="card">
-    <div class="grid">
-      <div class="tile"><b id="t-cruise">-</b><small>Speed/Gang (aktueller Gang)</small></div>
-    </div>
     <div class="row"><span class="fin"><span data-t="rowSwVer"></span> <span id="t-swver">-</span></span></div>
     <div class="row"><span class="fin"><span data-t="rowFwVer"></span> <span id="t-fwver">-</span></span></div>
   </div>
