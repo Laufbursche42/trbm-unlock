@@ -41,18 +41,18 @@
       <button class="primary span2" id="btn-toggle" disabled></button>
     </div>
     <div class="set-row">
-      <label>Max-Speed (global)</label>
-      <input id="max-in" type="number" min="1" max="100" value="100">
+      <label>Gang 1</label>
+      <input id="g1-in" type="number" min="1" max="100" value="45">
     </div>
     <div class="set-row">
-      <label>Entsperren: Speed per Gang</label>
-      <input id="unlock-pg-in" type="number" min="1" max="100" value="40">
+      <label>Gang 2</label>
+      <input id="g2-in" type="number" min="1" max="100" value="60">
     </div>
     <div class="set-row">
-      <label>Sperren: Speed per Gang</label>
-      <input id="lock-pg-in" type="number" min="1" max="100" value="22">
+      <label>Gang 3</label>
+      <input id="g3-in" type="number" min="1" max="100" value="80">
     </div>
-    <p class="hint">Entsperren/Sperren schreibt per-Gang-Speed + Max auf alle Gaenge (Gang 1 bis 5) ueber den 0x18-Rahmen. Der Blade hat keine IVCU, die MCU uebernimmt die Werte direkt. Aktuell gelesen: <b id="cur-state">-</b></p>
+    <p class="hint">Diese drei Werte sind die entsperrten Speeds fuer die deutschen Gaenge (intern ESC-Gang 2/3/4). <b>Entsperren</b> schreibt sie, <b>Sperren</b> setzt alle drei auf 22. Gang 1 und Gang 5 gibt es nur im Ausland und werden nicht angefasst. Der Blade hat keine IVCU, die MCU uebernimmt die Werte direkt. Aktuell gelesen: <b id="cur-state">-</b></p>
     <p class="hint" data-t="controlsHint"></p>
   </div>
 

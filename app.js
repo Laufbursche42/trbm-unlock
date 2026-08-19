@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'trbm-v2 (gear-speed lock; base lb v69)';   // logged on load so a tester's log reveals the build
+const BUILD = 'trbm-v3 (per-gear DE 2-3-4; base lb v69)';   // logged on load so a tester's log reveals the build
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -740,37 +740,40 @@ function readNum(id, dflt) {
   return (isNaN(v) || v < 0) ? dflt : Math.min(v, 100);
 }
 
-// Write per-gear speed + global max onto every gear (1..5) via one 0x18 frame per gear. Each gear
-// keeps its own eabs/start levels and currents from the last 55 71 (gearCache); only the speed and
-// the global max change. maxSpeed goes into a[11] (global) through S.speedLimit.
-function writeSpeedAllGears(perGearSpeed, maxSpeed) {
-  S.speedLimit = maxSpeed & 0xFF;
-  for (let g = 1; g <= 5; g++) {
+// Germany uses the internal ESC gears 2, 3, 4 (the rider sees them as gears 1, 2, 3). Internal gears
+// 1 and 5 exist only abroad, so we never touch them. DE_GEARS maps rider gear -> internal ESC gear.
+const DE_GEARS = [2, 3, 4];
+
+// Write one 0x18 frame per German gear (internal 2/3/4), setting that gear's speed (a[10]). Everything
+// else (eabs/start levels, currents, global max via S.speedLimit) is mirrored from the last 55 71.
+// vals[i] is the speed for DE_GEARS[i]. Confirmed lever from the captures: Byte10 = 22 locked, 60 open.
+function writeGearSpeeds(vals) {
+  for (let i = 0; i < DE_GEARS.length; i++) {
+    const g = DE_GEARS[i];
     const c = gearCache[g] || {};
     const eabs = (c.eabsLevel != null) ? c.eabsLevel : S.eabsLevel;
     const fs = (c.fStartLevel != null) ? c.fStartLevel : S.fStartLevel;
     const rs = (c.rStartLevel != null) ? c.rStartLevel : S.rStartLevel;
     const fc = (c.fCurrent != null) ? c.fCurrent : S.fCurrent;
     const rc = (c.rCurrent != null) ? c.rCurrent : S.rCurrent;
-    enqueue(buildSettingFrame(2, g, eabs, fs, rs, perGearSpeed & 0xFF, fc, rc));
+    enqueue(buildSettingFrame(2, g, eabs, fs, rs, vals[i] & 0xFF, fc, rc));
   }
 }
 
 function unlock() {
   if (!requireReady()) return;
-  const pg = readNum('unlock-pg-in', 40), mx = readNum('max-in', 100);
-  writeSpeedAllGears(pg, mx);
+  const v = [readNum('g1-in', 45), readNum('g2-in', 60), readNum('g3-in', 80)];
+  writeGearSpeeds(v);
   T.lock = 'unlocked';
-  log('entsperrt: per-Gang ' + pg + ', Max ' + mx + ' auf alle Gaenge geschrieben');
+  log('entsperrt: Gang 1/2/3 (ESC 2/3/4) = ' + v.join(' / '));
   refreshToggle();
 }
 
 function lock() {
   if (!requireReady()) return;
-  const pg = readNum('lock-pg-in', 22), mx = readNum('max-in', 100);
-  writeSpeedAllGears(pg, mx);
+  writeGearSpeeds([22, 22, 22]);
   T.lock = 'locked';
-  log('gesperrt: per-Gang ' + pg + ', Max ' + mx + ' auf alle Gaenge geschrieben');
+  log('gesperrt: alle DE-Gaenge = 22');
   refreshToggle();
 }
 
