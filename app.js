@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'trbm-v4 (no wheel-cruise-flash; base lb v69)';   // logged on load so a tester's log reveals the build
+const BUILD = 'v4';
 
 // --------------------------- BLE transport constants ---------------------------
 
