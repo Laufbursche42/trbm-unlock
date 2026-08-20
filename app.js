@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v104';
+const BUILD = 'v105';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -858,8 +858,13 @@ function onSettingsFrame() {
   }
 }
 
-// A Blade advertises its FIN as the BLE name: "TDE..." locked, "T1..." unlocked (NAME_PREFIXES).
-function isBlade() { return NAME_PREFIXES.some(p => (deviceName || '').startsWith(p)); }
+// A Blade is identified by the model code in the MIDDLE of the FIN (BLE name), NOT the prefix.
+// The prefix (TDE locked / T1 unlocked / INT) only says "Tde scooter", which also includes the
+// Fighter Mini EKFV. The app's own decoder reads characters 7-9 (substring(6,9)) as the model code:
+// "BME"/"BMP"/"BMU" -> BLADE MINI, "FME.." -> Fighter Mini, "BQ.." -> Blade Q, etc. So a Blade Mini
+// is exactly a name whose middle code starts with "BM".
+function bladeModelCode() { return (deviceName || '').substring(6, 9); }
+function isBlade() { return bladeModelCode().startsWith('BM'); }
 
 // Settings (Entsperren/Sperren + Gang-Werte) are only ever writable on a Blade running the supported
 // 3.4.6. Any other firmware (or a non-Blade name) is blocked: the controls stay disabled and a modal
@@ -880,7 +885,7 @@ function refreshGearInputs() {
 
 function requireReady() {
   if (!connected) { log('connect first'); return false; }
-  if (!isBlade()) { log('this is not a Blade (BLE name must be TDE.../T1...) - settings blocked'); return false; }
+  if (!isBlade()) { log('this is not a Blade (FIN model code ' + (bladeModelCode() || '?') + ' is not BM..) - settings blocked'); return false; }
   if (!S.received71) { log('waiting for telemetry (55 71) before writing settings'); return false; }
   if (T.swVer !== SUPPORTED_FW) { log('settings are only allowed on firmware ' + SUPPORTED_FW + ' - detected ' + (T.swVer || 'unknown')); return false; }
   return true;
