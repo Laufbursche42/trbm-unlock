@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v100';
+const BUILD = 'v101';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -377,7 +377,6 @@ function dispatch(t) {
       // 55 43 version frame: t[2..4] = base VCU sw version (e.g. 5.4.19); t[6] = a build number some
       // patched firmwares stamp into the hwVer major byte. On stock firmware t[6] is usually 0.
       if ((t[2] & 0xFF) > 0) T.swVer = (t[2] & 0xFF) + '.' + (t[3] & 0xFF) + '.' + (t[4] & 0xFF);
-      T.fwBuild = t[6] & 0xFF;
       checkFwVersion();      // warn once if this is not the supported 3.4.6
       break;
     default: break;
@@ -1199,7 +1198,6 @@ function refreshToggle() {
 }
 function renderLive() {
   if ($('t-swver')) $('t-swver').textContent = T.swVer ? ('R' + T.swVer) : '-';
-  if ($('t-fwver')) $('t-fwver').textContent = (T.fwBuild != null && T.fwBuild > 0) ? ('V' + T.fwBuild) : '-';
   refreshSettingsInputs();
   refreshToggle();
   refreshInfoButtons();
@@ -1215,7 +1213,6 @@ function resetTiles() {                                 // no telemetry -> show 
   S.received71 = false;
   T.swVer = null; fwWarned = false;   // a reconnect re-reads the version and may warn again
   if ($('t-swver')) $('t-swver').textContent = '-';
-  if ($('t-fwver')) $('t-fwver').textContent = '-';
   refreshToggle();
 }
 // Wheel + cruise: editable only once the scooter reported its config (55 71). Prefilled ONCE with

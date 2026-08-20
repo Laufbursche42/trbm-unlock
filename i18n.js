@@ -33,7 +33,6 @@ window.I18N = {
     gearHint: "Diese drei Werte sind die entsperrten Geschwindigkeiten für die deutschen Gänge (intern ESC-Gang 2, 3 und 4). <b>Entsperren</b> schreibt sie, <b>Sperren</b> setzt alle drei auf 22 km/h. Gang 1 und Gang 5 gibt es nur im Ausland und werden nicht angefasst.",
 
     rowSwVer: "Firmware-Version:",
-    rowFwVer: "Laufbursche-Version:",
     cruiseOff: "Aus",
     cruiseAuto: "Auto",
     cruiseManual: "Manuell",
@@ -224,7 +223,6 @@ window.I18N = {
     gearHint: "These three values are the unlocked speeds for the German gears (internally ESC gears 2, 3 and 4). <b>Unlock</b> writes them, <b>Lock</b> sets all three to 22 km/h. Gears 1 and 5 exist only abroad and are left untouched.",
 
     rowSwVer: "Firmware version:",
-    rowFwVer: "Laufbursche version:",
     cruiseOff: "Off",
     cruiseAuto: "Auto",
     cruiseManual: "Manual",
