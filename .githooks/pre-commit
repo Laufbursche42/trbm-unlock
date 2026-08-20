@@ -161,6 +161,23 @@ if [ -f "$REPO_ROOT/scripts/security-scan.py" ]; then
 fi
 
 # =================================================================
+# PHASE E - cache-bust guard: index.html ?v= must match BUILD in app.js
+# =================================================================
+if [ -f "$REPO_ROOT/app.js" ] && [ -f "$REPO_ROOT/index.html" ]; then
+  BUILD_VER=$(grep -oE "const BUILD = 'v[0-9]+'" "$REPO_ROOT/app.js" | grep -oE "[0-9]+" | head -1)
+  if [ -n "$BUILD_VER" ]; then
+    BAD_VER=$(grep -oE "\.(js|css)\?v=[0-9]+" "$REPO_ROOT/index.html" | grep -oE "[0-9]+$" | grep -vx "$BUILD_VER" | head -1)
+    if [ -n "$BAD_VER" ]; then
+      echo "BLOCK: index.html cache-bust ?v=$BAD_VER weicht von BUILD v$BUILD_VER ab."
+      echo "  -> node scripts/sync-cachebust.js ausfuehren, dann index.html neu stagen."
+      RC=1
+    else
+      echo "OK    [cache-bust] ?v= synchron mit BUILD v$BUILD_VER"
+    fi
+  fi
+fi
+
+# =================================================================
 echo "-----------------------------------------------------------------"
 if [ "$RC" -ne 0 ]; then
   echo "pre-commit FAILED -- commit blocked. Fix the issues above (bypass a genuine false positive with: git commit --no-verify)."
