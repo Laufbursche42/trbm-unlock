@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v14';
+const BUILD = 'v15';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -789,7 +789,7 @@ const DE_GEARS = [2, 3, 4];
 // vals[i] is the speed for DE_GEARS[i]. Confirmed lever from the captures: Byte10 = 22 locked, 60 open.
 function isFw348() { return typeof T.swVer === 'string' && T.swVer.indexOf('3.4.8') === 0; }
 
-function writeGearSpeeds(vals) {
+function writeGearSpeeds(vals, forceCruise) {
   // vals = [g1, g2, g3] = the three entered speeds (rider gears 1/2/3 = internal ESC 2/3/4).
   // 3.4.8 test mode: the 3.4.6-style write to gears 2/3/4 did nothing on 3.4.8, and a 3.4.8 blade
   // was seen running gears 2 and 3 with very low per-gear bytes. So on 3.4.8 we write ALL FIVE
@@ -801,6 +801,12 @@ function writeGearSpeeds(vals) {
     : [[2, vals[0], 1], [3, vals[1], 2], [4, vals[2], 3]];
   const notes = [];
   const curDefaults = [20, 25, 30];
+  // 3.4.8-Test: der per-Gang-Speed allein wird vom harten Klemm-Cap ueberschrieben. Die
+  // urspruengliche Erkenntnis war, dass der Tempomat (cruise=2) im ESC die Klemme kippt. Also
+  // beim Entsperren auf 3.4.8 cruise=2 in a[4]/a[17] mitschreiben. Beim Sperren nicht.
+  const prevCruise = S.cruise;
+  const clampTest = t348 && forceCruise;
+  if (clampTest) { S.cruise = 2; log('3.4.8 Klemm-Test: cruise=2 (Tempomat) wird mitgeschrieben, a[4] Bit2.'); }
   for (const [g, spd, rider] of plan) {
     const c = gearCache[g] || {};
     const eabsIn = rider ? readLevel('g' + rider + '-eabs') : null;   // null (empty) = default 2
@@ -813,6 +819,7 @@ function writeGearSpeeds(vals) {
     enqueue(buildSettingFrame(2, g, eabs, fs, rs, spd & 0xFF, cur, cur));
     if (fsIn != null || rsIn != null || eabsIn != null) notes.push('Gang ' + rider + ' Anfahrt v=' + fs + ' h=' + rs + ' eABS=' + eabs + ' Strom=' + cur);
   }
+  if (clampTest) S.cruise = prevCruise;
   if (t348) log('3.4.8-Testmodus aktiv: alle Gaenge 1-5 geschrieben (' + vals.join('/') + ').');
   if (notes.length) log('Anfahrts-Level Test: ' + notes.join(' | '));
 }
@@ -820,7 +827,7 @@ function writeGearSpeeds(vals) {
 function unlock() {
   if (!requireReady()) return;
   const v = [readNum('g1-in', 45), readNum('g2-in', 60), readNum('g3-in', 80)];
-  writeGearSpeeds(v);
+  writeGearSpeeds(v, true);
   T.lock = 'unlocked';
   log('entsperrt: Gang 1/2/3 (ESC 2/3/4) = ' + v.join(' / '));
   refreshToggle();
@@ -828,7 +835,7 @@ function unlock() {
 
 function lock() {
   if (!requireReady()) return;
-  writeGearSpeeds([22, 22, 22]);
+  writeGearSpeeds([22, 22, 22], false);
   T.lock = 'locked';
   log('gesperrt: alle DE-Gänge = 22');
   refreshToggle();
