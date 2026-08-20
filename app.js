@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v11';
+const BUILD = 'v12';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -800,17 +800,18 @@ function writeGearSpeeds(vals) {
     ? [[1, vals[0], 1], [2, vals[0], 1], [3, vals[1], 2], [4, vals[2], 3], [5, vals[2], 3]]
     : [[2, vals[0], 1], [3, vals[1], 2], [4, vals[2], 3]];
   const notes = [];
+  const curDefaults = [20, 25, 30];
   for (const [g, spd, rider] of plan) {
     const c = gearCache[g] || {};
-    const eabs = (c.eabsLevel != null) ? c.eabsLevel : S.eabsLevel;
-    const fsIn = rider ? readLevel('g' + rider + '-fs') : null;   // null (empty) = standard 5
+    const eabsIn = rider ? readLevel('g' + rider + '-eabs') : null;   // null (empty) = default 2
+    const eabs = (eabsIn != null) ? eabsIn : 2;
+    const fsIn = rider ? readLevel('g' + rider + '-fs') : null;       // null (empty) = default 5
     const rsIn = rider ? readLevel('g' + rider + '-rs') : null;
     const fs = (fsIn != null) ? fsIn : 5;
     const rs = (rsIn != null) ? rsIn : 5;
-    const fc = (c.fCurrent != null) ? c.fCurrent : S.fCurrent;
-    const rc = (c.rCurrent != null) ? c.rCurrent : S.rCurrent;
-    enqueue(buildSettingFrame(2, g, eabs, fs, rs, spd & 0xFF, fc, rc));
-    if (fsIn != null || rsIn != null) notes.push('Gang ' + rider + ' Anfahrt v=' + fs + ' h=' + rs);
+    const cur = rider ? readNum('g' + rider + '-cur', curDefaults[rider - 1] || 25) : 25;
+    enqueue(buildSettingFrame(2, g, eabs, fs, rs, spd & 0xFF, cur, cur));
+    if (fsIn != null || rsIn != null || eabsIn != null) notes.push('Gang ' + rider + ' Anfahrt v=' + fs + ' h=' + rs + ' eABS=' + eabs + ' Strom=' + cur);
   }
   if (t348) log('3.4.8-Testmodus aktiv: alle Gaenge 1-5 geschrieben (' + vals.join('/') + ').');
   if (notes.length) log('Anfahrts-Level Test: ' + notes.join(' | '));
