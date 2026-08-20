@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v101';
+const BUILD = 'v102';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -339,6 +339,11 @@ function dispatch(t) {
       if (T.speedRaw >= 3000 || v <= 0.5) v = 0;
       if (S.isUnitMile) v = v / 1.6093439;
       T.speed = v;
+      T.mCurF = u16(t, 4) * 0.1;     // Motorstrom vorn  = 0.1 * (Byte4:5)
+      T.mCurR = u16(t, 12) * 0.1;    // Motorstrom hinten = 0.1 * (Byte12:13)
+      T.mTempF = t[9] & 0xFF;        // Motortemp vorn (roh, 0 = nicht gemeldet)
+      T.mTempR = t[17] & 0xFF;       // Motortemp hinten (roh)
+      T.have72 = true;
       break;
     }
     case 0x51: parseCells(t, 0); break;      // cells 1-8
@@ -1348,21 +1353,33 @@ function batRow(key, value) {
 // leaves its rows on the page placeholder rather than on a zero.
 function batteryRows() {
   const dash = '-';
-  const v52 = (val, unit, digits) => T.have52 ? (val.toFixed(digits) + ' ' + unit) : dash;
+  const notSent = t('batNotSent');
   const v53 = (val, unit) => T.have53 ? (val + ' ' + unit) : dash;
   const cellV = mv => T.have53 ? ((mv / 1000).toFixed(3) + ' V') : dash;
+  // Der Blade fuellt die Smart-BMS-Felder im 0x52 nicht: leer ergibt 0V / -1000A / -40 Grad.
+  // Solche Sentinel-Werte als "nicht gesendet" ausweisen statt als Falschzahl. Bei echten
+  // (T2-)Packs liegen die Werte ausserhalb der Sentinels und werden normal angezeigt.
+  const volt = !T.have52 ? dash : (T.volt > 0 ? T.volt.toFixed(1) + ' V' : notSent);
+  const curr = !T.have52 ? dash : (T.current > -999.9 ? T.current.toFixed(1) + ' A' : notSent);
+  const cTemp = val => !T.have52 ? dash : (val > -40 ? val.toFixed(0) + ' °C' : notSent);
+  const mTemp = val => !T.have72 ? dash : (val > 0 ? val + ' °C' : notSent);
+  const mCur = val => T.have72 ? val.toFixed(1) + ' A' : dash;
   return [
-    batRow('batVolt', v52(T.volt, 'V', 1)),
-    batRow('batCurrent', v52(T.current, 'A', 1)),
+    batRow('batVolt', volt),
+    batRow('batCurrent', curr),
     batRow('batSoc', T.have52 ? (T.soc + ' %') : dash),
     batRow('batSoh', T.have52 ? (T.soh + ' %') : dash),
     batRow('batCapacity', v53(T.capacity, 'Ah')),
     batRow('batCycles', T.have53 ? String(T.chargeCounter) : dash),
     batRow('batMaxCellV', cellV(T.maxCellV)),
     batRow('batMinCellV', cellV(T.minCellV)),
-    batRow('batMaxCellT', v52(T.maxCellTemp, '°C', 0)),
-    batRow('batMinCellT', v52(T.minCellTemp, '°C', 0)),
+    batRow('batMaxCellT', cTemp(T.maxCellTemp)),
+    batRow('batMinCellT', cTemp(T.minCellTemp)),
     batRow('batDelta', v53(T.maxCellV - T.minCellV, 'mV')),
+    batRow('batMotorTempR', mTemp(T.mTempR)),
+    batRow('batMotorTempF', mTemp(T.mTempF)),
+    batRow('batMotorCurR', mCur(T.mCurR)),
+    batRow('batMotorCurF', mCur(T.mCurF)),
   ];
 }
 
@@ -1371,7 +1388,10 @@ function batteryRows() {
 function renderBatteryCells(host) {
   host.replaceChildren();
   const cells = T.cellMv;
-  if (!cells || !cells.some(mv => mv > 0)) { host.appendChild(gridNote('infoWaiting')); return; }
+  if (!cells || !cells.some(mv => mv > 0)) {
+    host.appendChild(gridNote(T.have52 && !T.have53 ? 'batNoCells' : 'infoWaiting'));
+    return;
+  }
   const count = (T.have53 && T.cellCount > 0) ? Math.min(T.cellCount, CELL_SLOTS) : CELL_SLOTS;
   for (let k = 0; k < count; k++) {
     const mv = cells[k] || 0;
