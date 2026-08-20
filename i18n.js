@@ -28,6 +28,8 @@ window.I18N = {
     feasNote: "Machbarkeitsstudie: Diese Seite zeigt, was das Bluetooth-Protokoll eines Teverun-Rollers technisch möglich macht, sie ist kein fertiges Produkt. Fehlerfreier Betrieb wird nicht versprochen, es gibt keinerlei Gewährleistung. Alles, was du hier tust, tust du auf eigenes Risiko.",
     fwWarnTitle: "Firmware nicht unterstützt",
     fwWarnMsg: "Diese Seite funktioniert bisher nur mit der alten Firmware 3.4.6. Dein Scooter meldet Version {ver}. Sperren und Entsperren wird damit voraussichtlich nicht funktionieren.",
+    fw348Title: "Firmware 3.4.8 - Testmodus",
+    fw348Msg: "Dein Scooter meldet Version {ver}. Diese ist noch nicht bestätigt. Der 3.4.8-Testmodus ist aktiv: beim Entsperren werden alle Gänge 1 bis 5 beschrieben. Bitte per Live-Cam prüfen ob sich etwas ändert und mir das Ergebnis melden.",
     gearHint: "Diese drei Werte sind die entsperrten Geschwindigkeiten für die deutschen Gänge (intern ESC-Gang 2, 3 und 4). <b>Entsperren</b> schreibt sie, <b>Sperren</b> setzt alle drei auf 22 km/h. Gang 1 und Gang 5 gibt es nur im Ausland und werden nicht angefasst.",
 
     rowSwVer: "Firmware-Version:",
@@ -217,6 +219,8 @@ window.I18N = {
     feasNote: "Feasibility study: this page shows what a Teverun scooter's Bluetooth protocol makes possible, it is not a finished product. Error-free operation is not promised and there is no warranty of any kind. Everything you do here you do at your own risk.",
     fwWarnTitle: "Firmware not supported",
     fwWarnMsg: "This page currently only works with the old firmware 3.4.6. Your scooter reports version {ver}. Lock and unlock will most likely not work with it.",
+    fw348Title: "Firmware 3.4.8 - test mode",
+    fw348Msg: "Your scooter reports version {ver}. This is not confirmed yet. The 3.4.8 test mode is active: unlocking writes all gears 1 to 5. Please check via live cam whether anything changes and report back.",
     gearHint: "These three values are the unlocked speeds for the German gears (internally ESC gears 2, 3 and 4). <b>Unlock</b> writes them, <b>Lock</b> sets all three to 22 km/h. Gears 1 and 5 exist only abroad and are left untouched.",
 
     rowSwVer: "Firmware version:",

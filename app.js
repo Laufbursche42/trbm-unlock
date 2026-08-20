@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v10';
+const BUILD = 'v11';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -294,12 +294,15 @@ let fwWarned = false;
 function checkFwVersion() {
   if (fwWarned || !T.swVer || T.swVer === SUPPORTED_FW) return;
   fwWarned = true;
+  const t348 = isFw348();
+  const titleEl = $('fwwarn-title');
+  if (titleEl) titleEl.textContent = t(t348 ? 'fw348Title' : 'fwWarnTitle');
   const msg = $('fwwarn-msg');
   if (msg) {
     // Build the message with safe DOM nodes (no innerHTML): the version goes into a span styled by
     // CSS (.fw-ver), the rest is plain text split around the {ver} placeholder.
     while (msg.firstChild) msg.removeChild(msg.firstChild);
-    const parts = t('fwWarnMsg').split('{ver}');
+    const parts = t(t348 ? 'fw348Msg' : 'fwWarnMsg').split('{ver}');
     msg.appendChild(document.createTextNode(parts[0] || ''));
     const ver = document.createElement('span');
     ver.className = 'fw-ver';
@@ -309,7 +312,7 @@ function checkFwVersion() {
   }
   const dlg = $('fwwarn');
   if (dlg && dlg.showModal && !dlg.open) dlg.showModal();
-  log('firmware ' + T.swVer + ' is not the supported ' + SUPPORTED_FW);
+  log('firmware ' + T.swVer + (t348 ? ' -> 3.4.8 test mode active' : ' is not the supported ' + SUPPORTED_FW));
 }
 
 function dispatch(t) {
@@ -784,25 +787,32 @@ const DE_GEARS = [2, 3, 4];
 // Write one 0x18 frame per German gear (internal 2/3/4), setting that gear's speed (a[10]). Everything
 // else (eabs/start levels, currents, global max via S.speedLimit) is mirrored from the last 55 71.
 // vals[i] is the speed for DE_GEARS[i]. Confirmed lever from the captures: Byte10 = 22 locked, 60 open.
+function isFw348() { return typeof T.swVer === 'string' && T.swVer.indexOf('3.4.8') === 0; }
+
 function writeGearSpeeds(vals) {
+  // vals = [g1, g2, g3] = the three entered speeds (rider gears 1/2/3 = internal ESC 2/3/4).
+  // 3.4.8 test mode: the 3.4.6-style write to gears 2/3/4 did nothing on 3.4.8, and a 3.4.8 blade
+  // was seen running gears 2 and 3 with very low per-gear bytes. So on 3.4.8 we write ALL FIVE
+  // internal gears, mapping the three fields across them, to cover whatever gear the blade uses.
+  const t348 = isFw348();
+  // plan: [internalGear, speed, riderFieldNumber(0 = no dedicated level field)]
+  const plan = t348
+    ? [[1, vals[0], 1], [2, vals[0], 1], [3, vals[1], 2], [4, vals[2], 3], [5, vals[2], 3]]
+    : [[2, vals[0], 1], [3, vals[1], 2], [4, vals[2], 3]];
   const notes = [];
-  for (let i = 0; i < DE_GEARS.length; i++) {
-    const g = DE_GEARS[i];
-    const rider = i + 1;                 // rider-facing gear label (1..3)
+  for (const [g, spd, rider] of plan) {
     const c = gearCache[g] || {};
     const eabs = (c.eabsLevel != null) ? c.eabsLevel : S.eabsLevel;
-    const fsIn = readLevel('g' + rider + '-fs');   // per gear; null (empty) = standard 5
-    const rsIn = readLevel('g' + rider + '-rs');
-    // We only ever see the ACTIVE gear in telemetry, so we cannot mirror an unseen gear's level.
-    // Empty field therefore writes the standard start level 5 (uniform across gears in practice),
-    // not a guessed mirror.
+    const fsIn = rider ? readLevel('g' + rider + '-fs') : null;   // null (empty) = standard 5
+    const rsIn = rider ? readLevel('g' + rider + '-rs') : null;
     const fs = (fsIn != null) ? fsIn : 5;
     const rs = (rsIn != null) ? rsIn : 5;
     const fc = (c.fCurrent != null) ? c.fCurrent : S.fCurrent;
     const rc = (c.rCurrent != null) ? c.rCurrent : S.rCurrent;
-    enqueue(buildSettingFrame(2, g, eabs, fs, rs, vals[i] & 0xFF, fc, rc));
+    enqueue(buildSettingFrame(2, g, eabs, fs, rs, spd & 0xFF, fc, rc));
     if (fsIn != null || rsIn != null) notes.push('Gang ' + rider + ' Anfahrt v=' + fs + ' h=' + rs);
   }
+  if (t348) log('3.4.8-Testmodus aktiv: alle Gaenge 1-5 geschrieben (' + vals.join('/') + ').');
   if (notes.length) log('Anfahrts-Level Test: ' + notes.join(' | '));
 }
 
