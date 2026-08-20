@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v102';
+const BUILD = 'v103';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -312,7 +312,7 @@ function checkFwVersion() {
   }
   const dlg = $('fwwarn');
   if (dlg && dlg.showModal && !dlg.open) dlg.showModal();
-  log('firmware ' + T.swVer + (t348 ? ' -> 3.4.8 test mode active' : ' is not the supported ' + SUPPORTED_FW));
+  log('firmware ' + T.swVer + (t348 ? ' -> 3.4.8 detected, only 3.4.6 supported (test functions stay active)' : ' is not the supported ' + SUPPORTED_FW));
 }
 
 function dispatch(t) {
