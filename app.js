@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v103';
+const BUILD = 'v104';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -858,9 +858,31 @@ function onSettingsFrame() {
   }
 }
 
+// A Blade advertises its FIN as the BLE name: "TDE..." locked, "T1..." unlocked (NAME_PREFIXES).
+function isBlade() { return NAME_PREFIXES.some(p => (deviceName || '').startsWith(p)); }
+
+// Settings (Entsperren/Sperren + Gang-Werte) are only ever writable on a Blade running the supported
+// 3.4.6. Any other firmware (or a non-Blade name) is blocked: the controls stay disabled and a modal
+// explains why. The 3.4.8 test code still exists but is no longer user-reachable.
+function settingsAllowed() {
+  return connected && S.received71 && isBlade() && T.swVer === SUPPORTED_FW;
+}
+
+const GEAR_INPUT_IDS = [
+  'g1-in', 'g1-fs', 'g1-rs', 'g1-cur', 'g1-eabs',
+  'g2-in', 'g2-fs', 'g2-rs', 'g2-cur', 'g2-eabs',
+  'g3-in', 'g3-fs', 'g3-rs', 'g3-cur', 'g3-eabs',
+];
+function refreshGearInputs() {
+  const ok = settingsAllowed();
+  GEAR_INPUT_IDS.forEach(id => { const el = $(id); if (el) el.disabled = !ok; });
+}
+
 function requireReady() {
   if (!connected) { log('connect first'); return false; }
+  if (!isBlade()) { log('this is not a Blade (BLE name must be TDE.../T1...) - settings blocked'); return false; }
   if (!S.received71) { log('waiting for telemetry (55 71) before writing settings'); return false; }
+  if (T.swVer !== SUPPORTED_FW) { log('settings are only allowed on firmware ' + SUPPORTED_FW + ' - detected ' + (T.swVer || 'unknown')); return false; }
   return true;
 }
 
@@ -1199,11 +1221,13 @@ function refreshToggle() {
   const locked = (T.lock !== 'unlocked');
   btn.textContent = locked ? t('btnUnlock') : t('btnLock');
   btn.dataset.action = locked ? 'unlock' : 'lock';
-  btn.disabled = !(connected && S.received71);
+  // Only a Blade on the supported 3.4.6 may change settings. Everything else keeps the button off.
+  btn.disabled = !settingsAllowed();
 }
 function renderLive() {
   if ($('t-swver')) $('t-swver').textContent = T.swVer ? ('R' + T.swVer) : '-';
   refreshSettingsInputs();
+  refreshGearInputs();
   refreshToggle();
   refreshInfoButtons();
 }
@@ -1225,7 +1249,7 @@ function resetTiles() {                                 // no telemetry -> show 
 let settingsPrefilled = false;
 function refreshSettingsInputs() {
   if (otaEngine) return;     // a running flash keeps these disabled until it reports finished
-  const ready = connected && S.received71;
+  const ready = settingsAllowed();   // wheel/cruise are settings too: Blade + 3.4.6 only
   const win = $('wheel-in'), cin = $('cruise-in'), bw = $('btn-set-wheel'), bc = $('btn-set-cruise');
   // Wheel size may only be changed while UNLOCKED (a locked, road-legal scooter keeps an honest
   // speedometer). Cruise, however, IS the unlock lever on stock firmware, so it stays settable while
