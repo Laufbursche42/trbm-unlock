@@ -28,8 +28,8 @@ window.I18N = {
     feasNote: "Machbarkeitsstudie: Diese Seite zeigt, was das Bluetooth-Protokoll eines Teverun-Rollers technisch möglich macht, sie ist kein fertiges Produkt. Fehlerfreier Betrieb wird nicht versprochen, es gibt keinerlei Gewährleistung. Alles, was du hier tust, tust du auf eigenes Risiko.",
     fwWarnTitle: "Firmware nicht unterstützt",
     fwWarnMsg: "Diese Seite funktioniert bisher nur mit der alten Firmware 3.4.6. Dein Scooter meldet Version {ver}. Sperren und Entsperren wird damit voraussichtlich nicht funktionieren.",
-    fw348Title: "Firmware 3.4.8 - nicht unterstützt",
-    fw348Msg: "Dein Scooter meldet Version {ver}. Diese Seite funktioniert aktuell nur mit Firmware 3.4.6. Auf 3.4.8 sitzt die Drossel fest in der ESC-Firmware und lässt sich per Bluetooth nicht lösen. Entsperren wird hier voraussichtlich nichts bewirken. Die 3.4.8-Testfunktionen bleiben aktiv.",
+    fw348Title: "Firmware 3.4.8 - Test möglich",
+    fw348Msg: "Dein Scooter meldet Version {ver}. Du kannst hier testen, aber es funktioniert potenziell nicht mit deiner Firmware: auf 3.4.8 sitzt die Drossel tief in der ESC-Firmware. Bitte per Live-Cam prüfen ob sich die Geschwindigkeit ändert und mir das Ergebnis melden.",
     gearHint: "Diese drei Werte sind die entsperrten Geschwindigkeiten für die deutschen Gänge (intern ESC-Gang 2, 3 und 4). <b>Entsperren</b> schreibt sie, <b>Sperren</b> setzt alle drei auf 22 km/h. Gang 1 und Gang 5 gibt es nur im Ausland und werden nicht angefasst.",
 
     rowSwVer: "Firmware-Version:",
@@ -224,8 +224,8 @@ window.I18N = {
     feasNote: "Feasibility study: this page shows what a Teverun scooter's Bluetooth protocol makes possible, it is not a finished product. Error-free operation is not promised and there is no warranty of any kind. Everything you do here you do at your own risk.",
     fwWarnTitle: "Firmware not supported",
     fwWarnMsg: "This page currently only works with the old firmware 3.4.6. Your scooter reports version {ver}. Lock and unlock will most likely not work with it.",
-    fw348Title: "Firmware 3.4.8 - not supported",
-    fw348Msg: "Your scooter reports version {ver}. This page currently only works with firmware 3.4.6. On 3.4.8 the limiter is baked into the ESC firmware and cannot be lifted over Bluetooth. Unlocking here will most likely have no effect. The 3.4.8 test functions remain active.",
+    fw348Title: "Firmware 3.4.8 - testing possible",
+    fw348Msg: "Your scooter reports version {ver}. You can test here, but it may not work with your firmware: on 3.4.8 the limiter sits deep in the ESC firmware. Please check via live cam whether the speed changes and report the result back to me.",
     gearHint: "These three values are the unlocked speeds for the German gears (internally ESC gears 2, 3 and 4). <b>Unlock</b> writes them, <b>Lock</b> sets all three to 22 km/h. Gears 1 and 5 exist only abroad and are left untouched.",
 
     rowSwVer: "Firmware version:",

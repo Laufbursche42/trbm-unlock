@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v105';
+const BUILD = 'v106';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -312,7 +312,7 @@ function checkFwVersion() {
   }
   const dlg = $('fwwarn');
   if (dlg && dlg.showModal && !dlg.open) dlg.showModal();
-  log('firmware ' + T.swVer + (t348 ? ' -> 3.4.8 detected, only 3.4.6 supported (test functions stay active)' : ' is not the supported ' + SUPPORTED_FW));
+  log('firmware ' + T.swVer + (t348 ? ' -> 3.4.8 detected, testing enabled (may not work on this firmware)' : ' is not the supported ' + SUPPORTED_FW));
 }
 
 function dispatch(t) {
@@ -866,11 +866,15 @@ function onSettingsFrame() {
 function bladeModelCode() { return (deviceName || '').substring(6, 9); }
 function isBlade() { return bladeModelCode().startsWith('BM'); }
 
-// Settings (Entsperren/Sperren + Gang-Werte) are only ever writable on a Blade running the supported
-// 3.4.6. Any other firmware (or a non-Blade name) is blocked: the controls stay disabled and a modal
-// explains why. The 3.4.8 test code still exists but is no longer user-reachable.
+// Firmware we let people operate the settings on: 3.4.6 (confirmed working) and 3.4.8 (testers may
+// try it, but a modal warns it probably will not work). Any other firmware stays blocked.
+function fwTestable() { return T.swVer === SUPPORTED_FW || isFw348(); }
+
+// Settings (Entsperren/Sperren + Gang-Werte) are writable only on a Blade running a testable firmware.
+// Any other firmware (or a non-Blade name) is blocked: the controls stay disabled and a modal explains
+// why. On 3.4.8 the controls are active so testers can try, with the warning modal shown.
 function settingsAllowed() {
-  return connected && S.received71 && isBlade() && T.swVer === SUPPORTED_FW;
+  return connected && S.received71 && isBlade() && fwTestable();
 }
 
 const GEAR_INPUT_IDS = [
@@ -887,7 +891,7 @@ function requireReady() {
   if (!connected) { log('connect first'); return false; }
   if (!isBlade()) { log('this is not a Blade (FIN model code ' + (bladeModelCode() || '?') + ' is not BM..) - settings blocked'); return false; }
   if (!S.received71) { log('waiting for telemetry (55 71) before writing settings'); return false; }
-  if (T.swVer !== SUPPORTED_FW) { log('settings are only allowed on firmware ' + SUPPORTED_FW + ' - detected ' + (T.swVer || 'unknown')); return false; }
+  if (!fwTestable()) { log('settings are only allowed on firmware ' + SUPPORTED_FW + ' or 3.4.8 (test) - detected ' + (T.swVer || 'unknown')); return false; }
   return true;
 }
 
