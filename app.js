@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v106';
+const BUILD = 'v107';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -866,15 +866,14 @@ function onSettingsFrame() {
 function bladeModelCode() { return (deviceName || '').substring(6, 9); }
 function isBlade() { return bladeModelCode().startsWith('BM'); }
 
-// Firmware we let people operate the settings on: 3.4.6 (confirmed working) and 3.4.8 (testers may
-// try it, but a modal warns it probably will not work). Any other firmware stays blocked.
+// The controls are usable on ANY connected scooter once telemetry is flowing, so testers can always
+// press Entsperren. Firmware and model are NOT a hard gate anymore - whether the firmware is the
+// supported 3.4.6 is only a WARNING (checkFwVersion shows a modal for anything else). The user wants
+// people to be able to try and just be told it may not work on their firmware. isBlade()/fwTestable()
+// stay defined for messaging only, not for gating.
 function fwTestable() { return T.swVer === SUPPORTED_FW || isFw348(); }
-
-// Settings (Entsperren/Sperren + Gang-Werte) are writable only on a Blade running a testable firmware.
-// Any other firmware (or a non-Blade name) is blocked: the controls stay disabled and a modal explains
-// why. On 3.4.8 the controls are active so testers can try, with the warning modal shown.
 function settingsAllowed() {
-  return connected && S.received71 && isBlade() && fwTestable();
+  return connected && S.received71;
 }
 
 const GEAR_INPUT_IDS = [
@@ -889,9 +888,7 @@ function refreshGearInputs() {
 
 function requireReady() {
   if (!connected) { log('connect first'); return false; }
-  if (!isBlade()) { log('this is not a Blade (FIN model code ' + (bladeModelCode() || '?') + ' is not BM..) - settings blocked'); return false; }
   if (!S.received71) { log('waiting for telemetry (55 71) before writing settings'); return false; }
-  if (!fwTestable()) { log('settings are only allowed on firmware ' + SUPPORTED_FW + ' or 3.4.8 (test) - detected ' + (T.swVer || 'unknown')); return false; }
   return true;
 }
 
