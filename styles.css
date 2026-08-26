@@ -332,5 +332,9 @@ dialog::backdrop { background: var(--backdrop); }
 .gears { display: flex; flex-direction: column; gap: 8px; }
 .gear-row { display: grid; grid-template-columns: 40px repeat(5, 1fr); gap: 5px; align-items: center; }
 .gear-row > label { margin: 0; text-align: left; font-size: 11px; }
-.gear-row > input { flex: none; width: 100%; min-width: 0; text-align: center; padding: 8px 3px; font-size: 13px; }
+.gear-row > input { flex: none; width: 100%; min-width: 0; max-width: 46px; justify-self: center; text-align: center; padding: 8px 3px; font-size: 13px; }
+.lock-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.lock-row > label { margin: 0; font-size: 13px; font-weight: 600; }
+.lock-row > input { flex: none; width: 56px; text-align: center; padding: 8px 3px; font-size: 13px; }
+.lock-row > .hint { margin: 0; flex: 1 1 160px; }
 .gear-head > span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; text-align: center; }

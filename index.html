@@ -10,7 +10,7 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="favicon-180.png">
-<link rel="stylesheet" href="styles.css?v=107">
+<link rel="stylesheet" href="styles.css?v=108">
 </head>
 <body>
 <div class="wrap">
@@ -67,6 +67,11 @@
         <input id="g3-cur" type="number" min="0" max="255" value="30">
         <input id="g3-eabs" type="number" min="0" max="15" placeholder="2">
       </div>
+    </div>
+    <div class="lock-row">
+      <label for="lock-in" data-t="lockLabel"></label>
+      <input id="lock-in" type="number" min="1" max="22" value="22">
+      <span class="hint" data-t="lockHint"></span>
     </div>
     <p class="hint">Je Gang: Speed, Anfahrt vorne (v), Anfahrt hinten (h), Strom und eABS (Motorbremse). Strom-Standard 20/25/30 für Gang 1/2/3. Anfahrts-Level und eABS sind Nibble (0 bis 15) - die App kappt das UI bei 5, technisch geht mehr. Leere Anfahrts-/eABS-Felder senden den Standard (Anfahrt 5, eABS 2).</p>
     <p class="hint" data-t="gearHint"></p>
@@ -250,8 +255,8 @@
   </div>
 </dialog>
 
-<script src="i18n.js?v=107"></script>
-<script src="app.js?v=107"></script>
-<script src="led.js?v=107"></script>
+<script src="i18n.js?v=108"></script>
+<script src="app.js?v=108"></script>
+<script src="led.js?v=108"></script>
 </body>
 </html>

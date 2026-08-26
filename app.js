@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v107';
+const BUILD = 'v108';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -730,7 +730,7 @@ async function otaWriteOnce(frame) {
 // neither: on lock the wheel is forced to 10 (eKFV), so the app is the sole place the real value
 // survives. On unlock, after the rename-reconnect brings a fresh 55 71, we re-apply both.
 
-const LS_WHEEL = 'trbm_wheel', LS_CRUISE = 'trbm_cruise', LS_DEVICE = 'trbm_device';
+const LS_WHEEL = 'trbm_wheel', LS_CRUISE = 'trbm_cruise', LS_DEVICE = 'trbm_device', LS_LOCK = 'trbm_lock';
 let pendingRestore = false;     // set on unlock; consumed by the first 55 71 after the reconnect
 let restoreArmed = false;       // set once the rename-drop actually happened
 
@@ -739,6 +739,11 @@ function savedCruise() { const v = parseInt(localStorage.getItem(LS_CRUISE), 10)
 
 function persistWheel(v) { localStorage.setItem(LS_WHEEL, String(v)); }
 function persistCruise(v) { localStorage.setItem(LS_CRUISE, String(v)); }
+// Per-user lock speed. Some scooters briefly peak a km/h or two above the set value on start-up,
+// so a rider can pick 19-22 to keep that peak under the eKFV limit. Persisted like the other prefs.
+function savedLock() { const v = parseInt(localStorage.getItem(LS_LOCK), 10); return isNaN(v) ? null : v; }
+function persistLock(v) { localStorage.setItem(LS_LOCK, String(v)); }
+function lockValue() { const v = readNum('lock-in', 22); return Math.min(Math.max(v, 1), 22); }
 
 // User sets the wheel diameter (open mode). Save it, then write the full 0x18 with the new wheel.
 function setWheel(v) {
@@ -839,9 +844,10 @@ function unlock() {
 
 function lock() {
   if (!requireReady()) return;
-  writeGearSpeeds([22, 22, 22], false);
+  const lv = lockValue();
+  writeGearSpeeds([lv, lv, lv], false);
   T.lock = 'locked';
-  log('gesperrt: alle DE-Gänge = 22');
+  log('gesperrt: alle DE-Gänge = ' + lv);
   refreshToggle();
 }
 
@@ -1855,6 +1861,12 @@ window.addEventListener('DOMContentLoaded', () => {
   $('btn-toggle').addEventListener('click', () => {
     if ($('btn-toggle').dataset.action === 'unlock') unlock(); else lock();
   });
+  // Lock speed: prefill from the saved pref, remember every change. Not gated on connection since
+  // it is only a stored preference; the lock action itself still goes through requireReady().
+  { const li = $('lock-in'); if (li) {
+      const s = savedLock(); if (s != null) li.value = String(s);
+      li.addEventListener('change', () => persistLock(lockValue()));
+  } }
   // Error reports and battery info. Esc closes a dialog too, so the refresh is stopped from the
   // close event rather than from the buttons.
   $('btn-err').addEventListener('click', openErrorReports);
