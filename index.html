@@ -10,7 +10,7 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="favicon-180.png">
-<link rel="stylesheet" href="styles.css?v=109">
+<link rel="stylesheet" href="styles.css?v=110">
 </head>
 <body>
 <div class="wrap">
@@ -42,10 +42,11 @@
       <button class="primary span2" id="btn-toggle" disabled></button>
     </div>
     <div class="gears">
-      <div class="gear-row gear-head"><span></span><span>Speed</span><span>Anf. v</span><span>Anf. h</span><span>Strom</span><span>eABS</span></div>
+      <div class="gear-row gear-head"><span></span><span>Speed</span><span>Sperre</span><span>Anf. v</span><span>Anf. h</span><span>Strom</span><span>eABS</span></div>
       <div class="gear-row">
         <label>Gang 1</label>
         <input id="g1-in" type="number" min="1" max="100" value="45">
+        <input id="g1-lock" type="number" min="1" max="22" value="10">
         <input id="g1-fs" type="number" min="0" max="15" placeholder="5">
         <input id="g1-rs" type="number" min="0" max="15" placeholder="5">
         <input id="g1-cur" type="number" min="0" max="255" value="20">
@@ -54,6 +55,7 @@
       <div class="gear-row">
         <label>Gang 2</label>
         <input id="g2-in" type="number" min="1" max="100" value="60">
+        <input id="g2-lock" type="number" min="1" max="22" value="15">
         <input id="g2-fs" type="number" min="0" max="15" placeholder="5">
         <input id="g2-rs" type="number" min="0" max="15" placeholder="5">
         <input id="g2-cur" type="number" min="0" max="255" value="25">
@@ -62,18 +64,14 @@
       <div class="gear-row">
         <label>Gang 3</label>
         <input id="g3-in" type="number" min="1" max="100" value="80">
+        <input id="g3-lock" type="number" min="1" max="22" value="21">
         <input id="g3-fs" type="number" min="0" max="15" placeholder="5">
         <input id="g3-rs" type="number" min="0" max="15" placeholder="5">
         <input id="g3-cur" type="number" min="0" max="255" value="30">
         <input id="g3-eabs" type="number" min="0" max="15" placeholder="2">
       </div>
     </div>
-    <div class="lock-row">
-      <label for="lock-in" data-t="lockLabel"></label>
-      <input id="lock-in" type="number" min="1" max="22" value="22">
-      <span class="hint" data-t="lockHint"></span>
-    </div>
-    <p class="hint">Je Gang: Speed, Anfahrt vorne (v), Anfahrt hinten (h), Strom und eABS (Motorbremse). Strom-Standard 20/25/30 für Gang 1/2/3. Anfahrts-Level und eABS sind Nibble (0 bis 15) - die App kappt das UI bei 5, technisch geht mehr. Leere Anfahrts-/eABS-Felder senden den Standard (Anfahrt 5, eABS 2).</p>
+    <p class="hint">Je Gang: <b>Speed</b> (entsperrt), <b>Sperre</b> (Wert beim Sperren, pro Gang eigen), Anfahrt vorne (v), Anfahrt hinten (h), Strom und eABS (Motorbremse). Sperr-Standard 10/15/21 - manche Roller peaken beim Anfahren kurz 1 bis 2 km/h drüber, mit 21 statt 22 bleibt der Peak unter 22. Alle Werte werden im Browser gemerkt. Strom-Standard 20/25/30. Anfahrts-Level und eABS sind Nibble (0 bis 15). Leere Anfahrts-/eABS-Felder senden den Standard (Anfahrt 5, eABS 2).</p>
     <p class="hint" data-t="gearHint"></p>
     <p class="hint" data-t="controlsHint"></p>
     <div class="row"><span class="fin"><span data-t="rowSwVer"></span> <span id="t-swver">-</span></span></div>
@@ -255,8 +253,8 @@
   </div>
 </dialog>
 
-<script src="i18n.js?v=109"></script>
-<script src="app.js?v=109"></script>
-<script src="led.js?v=109"></script>
+<script src="i18n.js?v=110"></script>
+<script src="app.js?v=110"></script>
+<script src="led.js?v=110"></script>
 </body>
 </html>

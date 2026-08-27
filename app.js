@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v109';
+const BUILD = 'v110';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -747,11 +747,16 @@ function savedCruise() { const v = parseInt(localStorage.getItem(LS_CRUISE), 10)
 
 function persistWheel(v) { localStorage.setItem(LS_WHEEL, String(v)); }
 function persistCruise(v) { localStorage.setItem(LS_CRUISE, String(v)); }
-// Per-user lock speed. Some scooters briefly peak a km/h or two above the set value on start-up,
-// so a rider can pick 19-22 to keep that peak under the eKFV limit. Persisted like the other prefs.
-function savedLock() { const v = parseInt(localStorage.getItem(LS_LOCK), 10); return isNaN(v) ? null : v; }
-function persistLock(v) { localStorage.setItem(LS_LOCK, String(v)); }
-function lockValue() { const v = readNum('lock-in', 22); return Math.min(Math.max(v, 1), 22); }
+// Per-gear lock speeds. Riders want the locked gears staggered (not all the same), and a value under
+// 22 keeps the start-up peak under the eKFV limit. Defaults 10/15/21, remembered as a JSON triple.
+const LOCK_DEFAULTS = [10, 15, 21];
+function clampLock(v) { return Math.min(Math.max(v, 1), 22); }
+function savedLocks() {
+  try { const a = JSON.parse(localStorage.getItem(LS_LOCK)); return (Array.isArray(a) && a.length === 3) ? a : null; }
+  catch (e) { return null; }
+}
+function lockValues() { return [1, 2, 3].map(n => clampLock(readNum('g' + n + '-lock', LOCK_DEFAULTS[n - 1]))); }
+function persistLocks() { localStorage.setItem(LS_LOCK, JSON.stringify(lockValues())); }
 
 // User sets the wheel diameter (open mode). Save it, then write the full 0x18 with the new wheel.
 function setWheel(v) {
@@ -854,10 +859,10 @@ function unlock() {
 
 function lock() {
   if (!requireReady()) return;
-  const lv = lockValue();
-  writeGearSpeeds([lv, lv, lv], false);
+  const lv = lockValues();
+  writeGearSpeeds(lv, false);
   T.lock = 'locked';
-  log('gesperrt: alle DE-Gänge = ' + lv);
+  log('gesperrt: Gang 1/2/3 = ' + lv.join(' / '));
   refreshToggle();
 }
 
@@ -891,9 +896,9 @@ function settingsAllowed() {
 }
 
 const GEAR_INPUT_IDS = [
-  'g1-in', 'g1-fs', 'g1-rs', 'g1-cur', 'g1-eabs',
-  'g2-in', 'g2-fs', 'g2-rs', 'g2-cur', 'g2-eabs',
-  'g3-in', 'g3-fs', 'g3-rs', 'g3-cur', 'g3-eabs',
+  'g1-in', 'g1-lock', 'g1-fs', 'g1-rs', 'g1-cur', 'g1-eabs',
+  'g2-in', 'g2-lock', 'g2-fs', 'g2-rs', 'g2-cur', 'g2-eabs',
+  'g3-in', 'g3-lock', 'g3-fs', 'g3-rs', 'g3-cur', 'g3-eabs',
 ];
 function refreshGearInputs() {
   const ok = settingsAllowed();
@@ -1870,12 +1875,12 @@ window.addEventListener('DOMContentLoaded', () => {
   $('btn-toggle').addEventListener('click', () => {
     if ($('btn-toggle').dataset.action === 'unlock') unlock(); else lock();
   });
-  // Lock speed: prefill from the saved pref, remember every change. Not gated on connection since
-  // it is only a stored preference; the lock action itself still goes through requireReady().
-  { const li = $('lock-in'); if (li) {
-      const s = savedLock(); if (s != null) li.value = String(s);
-      li.addEventListener('change', () => persistLock(lockValue()));
-  } }
+  // Per-gear lock speeds: prefill from the saved triple, remember every change.
+  { const a = savedLocks();
+    [1, 2, 3].forEach(n => { const el = $('g' + n + '-lock'); if (el) {
+        if (a) el.value = String(a[n - 1]);
+        el.addEventListener('change', persistLocks);
+    } }); }
   // Error reports and battery info. Esc closes a dialog too, so the refresh is stopped from the
   // close event rather than from the buttons.
   $('btn-err').addEventListener('click', openErrorReports);
