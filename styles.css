@@ -330,7 +330,7 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* Per-gear settings table: label column plus Speed / Anfahrt v / Anfahrt h, aligned with headers. */
 .gears { display: flex; flex-direction: column; gap: 6px; }
-.gear-row { display: grid; grid-template-columns: 34px repeat(6, 1fr); gap: 3px; align-items: center; }
-.gear-row > label { margin: 0; text-align: left; font-size: 11px; }
+.gear-row { display: grid; grid-template-columns: 48px repeat(6, 1fr); gap: 3px; align-items: center; }
+.gear-row > label { margin: 0; text-align: left; font-size: 11px; white-space: nowrap; }
 .gear-row > input { flex: none; width: 100%; min-width: 0; max-width: 44px; justify-self: center; text-align: center; padding: 8px 2px; font-size: 13px; }
 .gear-head > span { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; text-align: center; }
