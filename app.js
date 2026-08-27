@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v108';
+const BUILD = 'v109';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -290,19 +290,25 @@ function confirmLink() {
 // 3.4.8) behave differently, so if the controller reports anything else we warn once and name the
 // version. The version comes from the 55 43 frame (t[2].t[3].t[4]) parsed in dispatch().
 const SUPPORTED_FW = '3.4.6';
+// 3.4.8 is confirmed to ignore every BLE write (the clamp sits in the ESC firmware), so it is blocked:
+// the user gets a "not supported" notice and cannot set anything. Flip this to true to re-enable 3.4.8
+// testing later - that is the only switch needed, everything else keys off it.
+const ALLOW_FW348 = false;
 let fwWarned = false;
 function checkFwVersion() {
   if (fwWarned || !T.swVer || T.swVer === SUPPORTED_FW) return;
   fwWarned = true;
-  const t348 = isFw348();
+  // The special 3.4.8 "testing possible" wording only shows while 3.4.8 is switched on. When 3.4.8 is
+  // blocked it gets the plain "not supported" notice like any other unsupported firmware.
+  const showTest = isFw348() && ALLOW_FW348;
   const titleEl = $('fwwarn-title');
-  if (titleEl) titleEl.textContent = t(t348 ? 'fw348Title' : 'fwWarnTitle');
+  if (titleEl) titleEl.textContent = t(showTest ? 'fw348Title' : 'fwWarnTitle');
   const msg = $('fwwarn-msg');
   if (msg) {
     // Build the message with safe DOM nodes (no innerHTML): the version goes into a span styled by
     // CSS (.fw-ver), the rest is plain text split around the {ver} placeholder.
     while (msg.firstChild) msg.removeChild(msg.firstChild);
-    const parts = t(t348 ? 'fw348Msg' : 'fwWarnMsg').split('{ver}');
+    const parts = t(showTest ? 'fw348Msg' : 'fwWarnMsg').split('{ver}');
     msg.appendChild(document.createTextNode(parts[0] || ''));
     const ver = document.createElement('span');
     ver.className = 'fw-ver';
@@ -312,7 +318,9 @@ function checkFwVersion() {
   }
   const dlg = $('fwwarn');
   if (dlg && dlg.showModal && !dlg.open) dlg.showModal();
-  log('firmware ' + T.swVer + (t348 ? ' -> 3.4.8 detected, testing enabled (may not work on this firmware)' : ' is not the supported ' + SUPPORTED_FW));
+  log('firmware ' + T.swVer + (isFw348()
+        ? (ALLOW_FW348 ? ' -> 3.4.8 testing enabled' : ' -> 3.4.8 not supported, settings disabled')
+        : ' is not the supported ' + SUPPORTED_FW));
 }
 
 function dispatch(t) {
@@ -797,6 +805,8 @@ const DE_GEARS = [2, 3, 4];
 // else (eabs/start levels, currents, global max via S.speedLimit) is mirrored from the last 55 71.
 // vals[i] is the speed for DE_GEARS[i]. Confirmed lever from the captures: Byte10 = 22 locked, 60 open.
 function isFw348() { return typeof T.swVer === 'string' && T.swVer.indexOf('3.4.8') === 0; }
+// True when the connected scooter runs 3.4.8 and 3.4.8 is currently switched off -> block all settings.
+function fw348Blocked() { return isFw348() && !ALLOW_FW348; }
 
 function writeGearSpeeds(vals, forceCruise) {
   // vals = [g1, g2, g3] = the three entered speeds (rider gears 1/2/3 = internal ESC 2/3/4).
@@ -872,14 +882,12 @@ function onSettingsFrame() {
 function bladeModelCode() { return (deviceName || '').substring(6, 9); }
 function isBlade() { return bladeModelCode().startsWith('BM'); }
 
-// The controls are usable on ANY connected scooter once telemetry is flowing, so testers can always
-// press Entsperren. Firmware and model are NOT a hard gate anymore - whether the firmware is the
-// supported 3.4.6 is only a WARNING (checkFwVersion shows a modal for anything else). The user wants
-// people to be able to try and just be told it may not work on their firmware. isBlade()/fwTestable()
-// stay defined for messaging only, not for gating.
+// Controls are usable on any connected scooter once telemetry flows - EXCEPT a blocked firmware.
+// Right now only 3.4.8 is blocked (it ignores every write); other firmwares just get a warning modal.
+// isBlade()/fwTestable() stay defined for messaging only, not for gating.
 function fwTestable() { return T.swVer === SUPPORTED_FW || isFw348(); }
 function settingsAllowed() {
-  return connected && S.received71;
+  return connected && S.received71 && !fw348Blocked();
 }
 
 const GEAR_INPUT_IDS = [
@@ -894,6 +902,7 @@ function refreshGearInputs() {
 
 function requireReady() {
   if (!connected) { log('connect first'); return false; }
+  if (fw348Blocked()) { log('firmware 3.4.8 is not supported - settings are disabled'); return false; }
   if (!S.received71) { log('waiting for telemetry (55 71) before writing settings'); return false; }
   return true;
 }
