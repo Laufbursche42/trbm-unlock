@@ -329,12 +329,14 @@ function dispatch(t) {
   switch (t[1]) {
     case 0x71:
       updateFrom71(t);
-      // On the Blade the lock state is NOT readable from telemetry: cruise (t[4]) and systemStatus6
-      // (t[17] bit6) stayed identical locked vs unlocked, and the global speed limit reads 100 either
-      // way. What actually differs is the per-gear speed the app writes. So we do NOT derive T.lock
-      // from telemetry - it latches on the user's Entsperren/Sperren action. The live per-gear + max
-      // values are shown as status so the rider sees exactly what is set.
+      // On the Blade cruise (t[4]) and systemStatus6 (t[17] bit6) stay identical locked vs unlocked,
+      // and the global speed limit reads 100 either way. What actually differs is the per-gear speed
+      // (t[10] -> S.assistSpeedLimit): ~22 when locked, high when unlocked. So we derive the real lock
+      // state from that live value instead of latching a client flag. Threshold 30 sits between the
+      // locked 22 and the open value.
+      T.lock = (S.assistSpeedLimit > 30) ? 'unlocked' : 'locked';
       T.gear = t[3] & 0xFF;
+      refreshToggle();
       onSettingsFrame();
       maybeRunDeepAction();      // a shortcut's ?do=lock waits for this first 55 71
       break;
@@ -1233,9 +1235,9 @@ function log(m) {
   el.textContent = ('[' + new Date().toLocaleTimeString() + '] ' + m + '\n') + el.textContent;
 }
 // The single lock/unlock control reflects the current state: "Unlock" when the scooter is locked,
-// "Lock" when it is open. The state is driven ONLY by the real IVCU value streamed in 55 71 t[2]
-// (T.lock). It is NEVER inferred from the FIN / BLE name: the FIN does not reflect the real lock and
-// lying about it is worse than admitting we do not know yet. Until a real 55 71 sets T.lock the state
+// "Lock" when it is open. The state is derived from the live 55 71 per-gear speed (t[10] ->
+// S.assistSpeedLimit) in the 0x71 handler, which sets T.lock: ~22 means locked, a high value means
+// unlocked. It is NEVER inferred from the FIN / BLE name. Until a real 55 71 sets T.lock the state
 // is shown as unknown ("reading...") and the button is disabled.
 function refreshToggle() {
   const btn = $('btn-toggle');
