@@ -14,7 +14,7 @@ cd "$REPO_ROOT" || exit 0
 
 echo "----- pre-push: full security scan ------------------------------"
 RC=0
-if command -v python >/dev/null 2>&1; then PY=python; else PY=python3; fi
+if command -v py >/dev/null 2>&1; then PY=py; elif command -v python3 >/dev/null 2>&1; then PY=python3; else PY=python; fi
 
 for f in $(git ls-files '*.js'); do
   if node --check "$f"; then echo "PASS [js] $f"; else echo "FAIL [js] $f"; RC=1; fi

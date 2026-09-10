@@ -155,7 +155,7 @@ fi
 # =================================================================
 # PHASE D - web security scan (XSS/injection sinks, inline handlers, CSP, ...)
 # =================================================================
-if command -v python >/dev/null 2>&1; then PY=python; else PY=python3; fi
+if command -v py >/dev/null 2>&1; then PY=py; elif command -v python3 >/dev/null 2>&1; then PY=python3; else PY=python; fi
 if [ -f "$REPO_ROOT/scripts/security-scan.py" ]; then
   if "$PY" "$REPO_ROOT/scripts/security-scan.py"; then :; else RC=1; fi
 fi
