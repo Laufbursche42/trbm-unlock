@@ -193,9 +193,9 @@ dialog::backdrop { background: var(--backdrop); }
 .doc-head { display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .doc-head h3 { margin: 0; font-size: 15px; color: var(--text); }
-#doc-x, #led-close, #err-close, #bat-close { flex: 0 0 auto; background: none; border: 0;
+#doc-x, #led-close, #err-close, #bat-close, #fwwarn-close { flex: 0 0 auto; background: none; border: 0;
   color: var(--label); font-size: 22px; line-height: 1; padding: 0 4px; }
-#doc-x:hover, #led-close:hover, #err-close:hover, #bat-close:hover { color: var(--accent); }
+#doc-x:hover, #led-close:hover, #err-close:hover, #bat-close:hover, #fwwarn-close:hover { color: var(--accent); }
 .doc-body { padding: 14px 16px; overflow-y: auto; overscroll-behavior: contain;
   color: var(--label); font-size: 13.5px; }
 .doc-body > :first-child { margin-top: 0; }
@@ -209,6 +209,12 @@ dialog::backdrop { background: var(--backdrop); }
 .doc-body ul.nested { margin: 6px 0 2px; padding-left: 16px; }
 .doc-body ul.nested li { margin-bottom: 3px; }
 .doc-body a { color: var(--accent); }
+.dlg-body a { color: var(--accent); }
+/* Deprecation banner: red tone, always visible, cannot be collapsed. */
+.sunset-banner { background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px;
+  padding: 11px 14px; font-size: 12px; line-height: 1.5; color: var(--text); }
+.sunset-banner b { color: var(--bad-strong); }
+.sunset-banner a { color: var(--bad-strong); text-decoration: underline; }
 .doc-body code { font-family: var(--mono); font-size: .88em; background: var(--field);
   border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
 .doc-body pre { background: var(--field); border: 1px solid var(--line); border-radius: 8px;
