@@ -6,11 +6,11 @@
      HTTP header. GitHub Pages sends no custom headers, so it would only log a warning. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-t="pageTitle">Laufbursche Blade Mini (eKFV) Tool</title>
+<title data-t="pageTitle">Laufbursche Blade Tool</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="favicon-180.png">
-<link rel="stylesheet" href="styles.css?v=113">
+<link rel="stylesheet" href="styles.css?v=114">
 </head>
 <body>
 <div class="wrap">
@@ -28,57 +28,127 @@
     </div>
   </header>
 
-  <div class="sunset-banner" role="alert" data-t="sunsetBannerHtml"></div>
-
+  <!-- (b) intro -->
   <div class="card">
     <h2 data-t="s1Title"></h2>
     <p class="hint" data-t="sub"></p>
     <p class="warn" data-t="feasNote"></p>
     <p class="hint" data-t="startHintGuide"></p>
+    <p class="hint" data-t="movedHint"></p>
   </div>
 
+  <!-- (c) connection -->
   <div class="card">
     <h2 data-t="s2Title"></h2>
     <div class="btns">
-      <button class="primary span2" id="btn-conn"></button>
-      <button class="primary span2" id="btn-toggle" disabled></button>
+      <button class="primary span2" id="btn-conn" data-act="connect"></button>
     </div>
-    <div class="gears">
-      <div class="gear-row gear-head"><span></span><span>Speed</span><span>Sperre</span><span>Anf. v</span><span>Anf. h</span><span>Strom</span><span>eABS</span></div>
-      <div class="gear-row">
-        <label>Gang 1</label>
-        <input id="g1-in" type="number" min="1" max="100" value="45">
-        <input id="g1-lock" type="number" min="1" max="22" value="10">
-        <input id="g1-fs" type="number" min="0" max="15" placeholder="5">
-        <input id="g1-rs" type="number" min="0" max="15" placeholder="5">
-        <input id="g1-cur" type="number" min="0" max="255" value="20">
-        <input id="g1-eabs" type="number" min="0" max="15" placeholder="2">
-      </div>
-      <div class="gear-row">
-        <label>Gang 2</label>
-        <input id="g2-in" type="number" min="1" max="100" value="60">
-        <input id="g2-lock" type="number" min="1" max="22" value="15">
-        <input id="g2-fs" type="number" min="0" max="15" placeholder="5">
-        <input id="g2-rs" type="number" min="0" max="15" placeholder="5">
-        <input id="g2-cur" type="number" min="0" max="255" value="25">
-        <input id="g2-eabs" type="number" min="0" max="15" placeholder="2">
-      </div>
-      <div class="gear-row">
-        <label>Gang 3</label>
-        <input id="g3-in" type="number" min="1" max="100" value="80">
-        <input id="g3-lock" type="number" min="1" max="22" value="21">
-        <input id="g3-fs" type="number" min="0" max="15" placeholder="5">
-        <input id="g3-rs" type="number" min="0" max="15" placeholder="5">
-        <input id="g3-cur" type="number" min="0" max="255" value="30">
-        <input id="g3-eabs" type="number" min="0" max="15" placeholder="2">
-      </div>
-    </div>
-    <p class="hint">Je Gang: <b>Speed</b> (entsperrt), <b>Sperre</b> (Wert beim Sperren, pro Gang eigen), Anfahrt vorne (v), Anfahrt hinten (h), Strom und eABS (Motorbremse). Sperr-Standard 10/15/21 - manche Roller peaken beim Anfahren kurz 1 bis 2 km/h drüber, mit 21 statt 22 bleibt der Peak unter 22. Alle Werte werden im Browser gemerkt. Strom-Standard 20/25/30. Anfahrts-Level und eABS sind Nibble (0 bis 15). Leere Anfahrts-/eABS-Felder senden den Standard (Anfahrt 5, eABS 2).</p>
-    <p class="hint" data-t="gearHint"></p>
-    <p class="hint" data-t="controlsHint"></p>
-    <div class="row"><span class="fin"><span data-t="rowSwVer"></span> <span id="t-swver">-</span></span></div>
+    <p class="hint" id="devinfo"></p>
+    <p class="hint" data-t="connHint"></p>
   </div>
 
+  <!-- (d) detected-firmware indicator: single source of truth for what is allowed -->
+  <div class="card">
+    <h2 data-t="fwTitle"></h2>
+    <div class="verdict neutral" id="fw-state"><b></b></div>
+  </div>
+
+  <!-- (e) live telemetry -->
+  <div class="card">
+    <h2 data-t="liveTitle"></h2>
+    <div class="grid">
+      <div class="tile"><b id="t-speed">-</b><small data-t="tileSpeed"></small></div>
+      <div class="tile"><b id="t-batt">-</b><small data-t="tileBatt"></small></div>
+      <div class="tile"><b id="t-volt">-</b><small data-t="tileVolt"></small></div>
+      <div class="tile" id="tile-cur"><b id="t-cur">-</b><small data-t="tileCur"></small></div>
+      <div class="tile"><b id="t-lock">-</b><small data-t="tileLock"></small></div>
+      <div class="tile"><b id="t-gear">-</b><small data-t="tileGear"></small></div>
+      <div class="tile"><b id="t-cruise">-</b><small data-t="tileCruise"></small></div>
+      <div class="tile"><b id="t-wheel">-</b><small data-t="tileWheel"></small></div>
+      <div class="tile"><b id="t-unit">-</b><small data-t="tileUnit"></small></div>
+      <div class="tile"><b id="t-abs">-</b><small data-t="tileAbs"></small></div>
+      <div class="tile"><b id="t-fw">-</b><small data-t="tileFw"></small></div>
+      <div class="tile"><b id="t-serial">-</b><small data-t="tileSerial"></small></div>
+    </div>
+    <p class="hint" data-t="liveHint"></p>
+  </div>
+
+  <!-- (f) lock / unlock -->
+  <div class="card">
+    <h2 data-t="s3Title"></h2>
+    <div class="btns">
+      <button class="primary span2" id="btn-toggle" disabled></button>
+    </div>
+    <p class="hint" id="lock-reason" hidden></p>
+    <div class="speed-cols">
+      <div class="set-row"><label data-t="lblOpen"></label><input id="speed-open" type="number" min="1" max="100" placeholder="45"></div>
+      <div class="set-row"><label data-t="lblLegal"></label><input id="speed-legal" type="number" min="1" max="22" placeholder="21"></div>
+    </div>
+    <p class="hint" data-t="controlsHint"></p>
+    <p class="hint" data-t="speedValuesHint"></p>
+  </div>
+
+  <!-- (g) settings - basic (wheel + cruise) -->
+  <details class="card" id="sect-settings">
+    <summary><h2 data-t="setTitle"></h2><span class="chev">&#9654;</span></summary>
+    <div class="sect-body">
+      <div class="set-row">
+        <label data-t="lblWheel"></label>
+        <input id="wheel-in" type="number" min="1" max="25.5" step="0.1" disabled>
+        <button id="btn-set-wheel" data-t="btnSetWheel" disabled></button>
+      </div>
+      <div class="set-row">
+        <label data-t="lblCruise"></label>
+        <select id="cruise-in" disabled>
+          <option value="0" data-t="cruiseOff"></option>
+          <option value="1" data-t="cruiseAuto"></option>
+          <option value="2" data-t="cruiseManual"></option>
+        </select>
+        <button id="btn-set-cruise" data-t="btnSetCruise" disabled></button>
+      </div>
+      <p class="hint" data-t="setBasicHint"></p>
+    </div>
+  </details>
+
+  <!-- (h) settings - advanced per-gear expert grid -->
+  <details class="card" id="sect-advanced">
+    <summary><h2 data-t="advTitle"></h2><span class="chev">&#9654;</span></summary>
+    <div class="sect-body">
+      <div class="gears">
+        <div class="gear-row gear-head"><span></span><span data-t="gearColSpeed"></span><span data-t="gearColLock"></span><span data-t="gearColFront"></span><span data-t="gearColRear"></span><span data-t="gearColCur"></span><span data-t="gearColEabs"></span></div>
+        <div class="gear-row">
+          <label id="gear-lbl-1"></label>
+          <input id="g1-in" type="number" min="1" max="100" value="45">
+          <input id="g1-lock" type="number" min="1" max="22" value="10">
+          <input id="g1-fs" type="number" min="0" max="15" placeholder="5">
+          <input id="g1-rs" type="number" min="0" max="15" placeholder="5">
+          <input id="g1-cur" type="number" min="0" max="255" value="20">
+          <input id="g1-eabs" type="number" min="0" max="15" placeholder="2">
+        </div>
+        <div class="gear-row">
+          <label id="gear-lbl-2"></label>
+          <input id="g2-in" type="number" min="1" max="100" value="60">
+          <input id="g2-lock" type="number" min="1" max="22" value="15">
+          <input id="g2-fs" type="number" min="0" max="15" placeholder="5">
+          <input id="g2-rs" type="number" min="0" max="15" placeholder="5">
+          <input id="g2-cur" type="number" min="0" max="255" value="25">
+          <input id="g2-eabs" type="number" min="0" max="15" placeholder="2">
+        </div>
+        <div class="gear-row">
+          <label id="gear-lbl-3"></label>
+          <input id="g3-in" type="number" min="1" max="100" value="80">
+          <input id="g3-lock" type="number" min="1" max="22" value="21">
+          <input id="g3-fs" type="number" min="0" max="15" placeholder="5">
+          <input id="g3-rs" type="number" min="0" max="15" placeholder="5">
+          <input id="g3-cur" type="number" min="0" max="255" value="30">
+          <input id="g3-eabs" type="number" min="0" max="15" placeholder="2">
+        </div>
+      </div>
+      <p class="hint" data-t="advHint"></p>
+    </div>
+  </details>
+
+  <!-- (i) error reports (read-only) -->
   <div class="card">
     <h2 data-t="errTitle"></h2>
     <p class="hint" data-t="errHint"></p>
@@ -87,6 +157,7 @@
     </div>
   </div>
 
+  <!-- (j) battery info (read-only) -->
   <div class="card">
     <h2 data-t="batTitle"></h2>
     <p class="hint" data-t="batHint"></p>
@@ -95,35 +166,36 @@
     </div>
   </div>
 
-  <!-- Hidden until the page is opened with ?test=led. The script is what unhides it. -->
-  <div class="card" id="led-card" hidden>
-    <h2 data-t="ledTitle"></h2>
-    <p class="hint" data-t="ledHint"></p>
-    <div class="row">
-      <button class="primary span2" id="btn-led" data-t="btnLed" disabled></button>
-    </div>
-  </div>
-
+  <!-- (k) home-screen shortcuts -->
   <div class="card">
     <h2 data-t="s5Title"></h2>
-
     <p class="hint" data-t="shortcutIos"></p>
     <div class="linkrow"><span class="lbl" data-t="btnUnlock"></span><pre class="copy">bluefy://open?url=https%3A%2F%2Flaufbursche42.github.io%2Ftrbm-unlock%2F%3Fdo%3Dunlock</pre></div>
     <div class="linkrow"><span class="lbl" data-t="btnLock"></span><pre class="copy">bluefy://open?url=https%3A%2F%2Flaufbursche42.github.io%2Ftrbm-unlock%2F%3Fdo%3Dlock</pre></div>
-
     <hr class="sep">
     <p class="hint" data-t="shortcutAndroid"></p>
     <div class="linkrow"><span class="lbl" data-t="btnUnlock"></span><pre class="copy">https://laufbursche42.github.io/trbm-unlock/?do=unlock</pre></div>
     <div class="linkrow"><span class="lbl" data-t="btnLock"></span><pre class="copy">https://laufbursche42.github.io/trbm-unlock/?do=lock</pre></div>
-
     <p class="hint" data-t="shortcutNote"></p>
   </div>
 
+  <!-- (l) log -->
   <div class="card">
     <h2 data-t="s6Title"></h2>
+    <div class="log-opts">
+      <label class="log-opt"><span data-t="publicLogLabel"></span><input type="checkbox" id="public-log" checked></label>
+      <label class="log-opt"><span data-t="diagLogLabel"></span><input type="checkbox" id="diag-log"></label>
+    </div>
+    <div class="btns">
+      <button type="button" id="btn-copy-log" data-t="btnCopyLog"></button>
+      <button type="button" id="btn-clear-log" data-t="btnClearLog"></button>
+      <button type="button" id="btn-save-log" class="span2" data-t="btnSaveLog"></button>
+    </div>
     <pre id="log"></pre>
+    <p class="hint"><span class="log-tx" data-t="logTxLegend"></span>, <span class="log-rx" data-t="logRxLegend"></span></p>
   </div>
 
+  <!-- (m) footer -->
   <footer class="foot">
     <span class="foot-links">
       <a id="link-guide" href="GUIDE.de.md" data-doc="GUIDE" data-t="footGuide"></a>
@@ -138,64 +210,6 @@
     <a class="foot-copy" href="https://laufbursche42.github.io/Laufbursche42/" target="_blank" rel="noopener">Copyright (c) 2026 Laufbursche</a>
   </footer>
 </div>
-
-<dialog id="led" aria-labelledby="led-title">
-  <div class="doc-head">
-    <h3 id="led-title" data-t="ledTitle"></h3>
-    <button type="button" id="led-close">&times;</button>
-  </div>
-  <div class="dlg-body">
-    <p class="hint" id="led-preview" data-t="ledPreview" hidden></p>
-    <p class="hint" id="led-live" data-t="ledLive" hidden></p>
-
-    <div class="led-row-inline">
-      <label for="led-on" data-t="ledOn"></label>
-      <span class="switch"><input type="checkbox" id="led-on"><span></span></span>
-    </div>
-
-    <div class="led-row">
-      <label for="led-bright" data-t="ledBright"></label>
-      <div class="led-slider">
-        <input type="range" id="led-bright" min="1" max="100" step="1" value="100">
-        <span id="led-bright-val">100 %</span>
-      </div>
-    </div>
-    <p class="warn" data-t="ledBrightWarn"></p>
-
-    <div class="led-row">
-      <label for="led-color" data-t="ledColor"></label>
-      <input type="color" id="led-color" value="#ffffff">
-    </div>
-
-    <div class="led-row">
-      <label id="led-effect-label" data-t="ledEffect"></label>
-      <div class="picker" id="led-effect">
-        <button type="button" class="picker-btn" id="led-effect-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="led-effect-label led-effect-btn"></button>
-        <div class="picker-list" id="led-effect-list" role="listbox" hidden></div>
-      </div>
-    </div>
-    <p class="hint" data-t="ledEffectHint"></p>
-  </div>
-  <div class="dlg-foot">
-    <button class="primary" id="led-close-2" data-t="docClose"></button>
-  </div>
-</dialog>
-
-<dialog id="led-warn">
-  <div class="dlg-body">
-    <h3 data-t="ledWarnTitle"></h3>
-    <p class="danger" data-t="ledWarnRoad"></p>
-    <p class="warn" data-t="ledWarnBright"></p>
-    <label class="consent-row" for="led-warn-skip">
-      <input type="checkbox" id="led-warn-skip">
-      <span data-t="ledWarnSkip"></span>
-    </label>
-  </div>
-  <div class="dlg-foot">
-    <button id="btn-led-warn-cancel" data-t="dlgNo"></button>
-    <button class="primary" id="btn-led-warn-ok" data-t="ledWarnOk"></button>
-  </div>
-</dialog>
 
 <dialog id="err" aria-labelledby="err-title">
   <div class="doc-head">
@@ -256,8 +270,7 @@
   </div>
 </dialog>
 
-<script src="i18n.js?v=113"></script>
-<script src="app.js?v=113"></script>
-<script src="led.js?v=113"></script>
+<script src="i18n.js?v=114"></script>
+<script src="app.js?v=114"></script>
 </body>
 </html>

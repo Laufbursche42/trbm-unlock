@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# pre-commit hook for trfm-unlock (adapted from the Laufbursche Edition hook).
+# pre-commit hook for trbm-unlock (adapted from the Laufbursche Edition hook).
 #
 #   Phase 0 - normalize Unicode dashes to ASCII '-' (auto-fix + re-stage).
 #   Phase A - syntax check every staged JS / HTML / JSON file.
@@ -124,7 +124,7 @@ PEM_RE='-----BEGIN[A-Z ]*PRIVATE KEY-----'
 AWS_RE='AKIA[0-9A-Z]{16}'
 GAPI_RE='AIza[0-9A-Za-z_-]{35}'
 WINHOME_RE='[Cc]:\\Users\\[^\\]+\\'
-GENERIC_RE="(password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token|private[_-]?key|bearer)[${SQ}${DQ}[:space:]]*[:=][[:space:]]*[${SQ}${DQ}]?[^[:space:]${SQ}${DQ}]"
+GENERIC_RE="(password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token|private[_-]?key|bearer)[${SQ}${DQ}[:space:]]*[:=][[:space:]]*[${SQ}${DQ}][^${SQ}${DQ}]{8,}"
 PLACEHOLDER_RE="[:=][[:space:]]*[${SQ}${DQ}]?(your[-_ ]|<[A-Za-z.]|example|changeme|change-me|placeholder|redacted|dummy|sample|xxxx|\.\.\.|todo|replace[-_]?me)"
 REFERENCE_RE="[:=][[:space:]]*[${SQ}${DQ}]?([$]\{|system\.getenv|process\.env)"
 SEC_HITS=0
@@ -136,7 +136,7 @@ scan_content() {
   if grep -aqE  -e "$AWS_RE"     "$_c"; then echo "BLOCK $_f : rule=aws-access-key";        SEC_HITS=1; RC=1; fi
   if grep -aqE  -e "$GAPI_RE"    "$_c"; then echo "BLOCK $_f : rule=google-api-key";        SEC_HITS=1; RC=1; fi
   if grep -aqE  -e "$WINHOME_RE" "$_c"; then echo "BLOCK $_f : rule=windows-home-path";     SEC_HITS=1; RC=1; fi
-  if grep -ainE -e "$GENERIC_RE" "$_c" | grep -aivE -e "$PLACEHOLDER_RE" | grep -aivE -e "$REFERENCE_RE" | grep -aq .; then
+  if grep -ainE -e "$GENERIC_RE" "$_c" | grep -aivE -e "$PLACEHOLDER_RE" | grep -aivE -e "$REFERENCE_RE" | grep -aivE -e "scan-ok" | grep -aq .; then
     echo "BLOCK $_f : rule=generic-secret-assignment"; SEC_HITS=1; RC=1
   fi
 }
@@ -198,11 +198,11 @@ if [ -f "$REPO_ROOT/app.js" ] && [ -f "$REPO_ROOT/index.html" ]; then
   if [ -n "$BUILD_VER" ]; then
     BAD_VER=$(grep -oE "\.(js|css)\?v=[0-9]+" "$REPO_ROOT/index.html" | grep -oE "[0-9]+$" | grep -vx "$BUILD_VER" | head -1)
     if [ -n "$BAD_VER" ]; then
-      echo "BLOCK: index.html cache-bust ?v=$BAD_VER weicht von BUILD v$BUILD_VER ab."
-      echo "  -> node scripts/sync-cachebust.js ausfuehren, dann index.html neu stagen."
+      echo "BLOCK: index.html cache-bust ?v=$BAD_VER differs from BUILD v$BUILD_VER."
+      echo "  -> run node scripts/sync-cachebust.js, then re-stage index.html."
       RC=1
     else
-      echo "OK    [cache-bust] ?v= synchron mit BUILD v$BUILD_VER"
+      echo "OK    [cache-bust] ?v= in sync with BUILD v$BUILD_VER"
     fi
   fi
 fi

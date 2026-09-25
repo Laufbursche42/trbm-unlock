@@ -13,7 +13,7 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 // Every script the page loads, so a key used from one of them does not read as unused.
-const SCRIPTS = ['app.js', 'led.js', 'ota.js'];
+const SCRIPTS = ['app.js'];
 const app = SCRIPTS
   .filter(f => fs.existsSync(path.join(root, f)))
   .map(f => fs.readFileSync(path.join(root, f), 'utf8'))
@@ -53,8 +53,8 @@ while ((m = call.exec(app)) !== null) usedJs.add(m[1]);
 const literal = /'([A-Za-z0-9_]+)'/g;
 const literals = new Set();
 while ((m = literal.exec(app)) !== null) literals.add(m[1]);
-// The two lookup tables are indexed by run-time strings from ota.js.
-const dynamic = new Set(['phase', 'msg']);
+// Reserved for tables indexed by run-time strings (none are shipped today).
+const dynamic = new Set([]);
 
 const top = Object.keys(I18N.de);
 const missingKeys = [...usedHtml, ...usedJs].filter(k => !top.includes(k));

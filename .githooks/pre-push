@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# pre-push hook for trfm-unlock: full-tree security gate before a push.
+# pre-push hook for trbm-unlock: full-tree security gate before a push.
 # Runs node --check on every tracked JS plus the full web security scan.
 # The fast per-file / per-commit checks live in .githooks/pre-commit.
 #

@@ -20,7 +20,7 @@ The app makes network connections in exactly two cases and no others:
 
 ### 1. Loading the page
 
-When you open or reload the page, your browser fetches the static files (`index.html`, `app.js`, `ota.js`, `i18n.js`, `styles.css` and the favicon) from the host (for example GitHub Pages). The host sees only two things: your **IP address** and which file you requested. Those are the normal web-server logs every website has. It **never** sees any scooter data, settings or FIN: not at page load, not at reload, not at any time. That data never reaches any server at all; it exists only on your phone and travels only over the local Bluetooth link (see below).
+When you open or reload the page, your browser fetches the static files (`index.html`, `app.js`, `i18n.js`, `styles.css` and the favicon) from the host (for example GitHub Pages). The host sees only two things: your **IP address** and which file you requested. Those are the normal web-server logs every website has. It **never** sees any scooter data, settings or FIN: not at page load, not at reload, not at any time. That data never reaches any server at all; it exists only on your phone and travels only over the local Bluetooth link (see below).
 
 The page ships no firmware. A firmware file you pick for a flash is read by the browser on your device and sent to the scooter over Bluetooth. It is never uploaded anywhere.
 

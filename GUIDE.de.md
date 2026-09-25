@@ -1,4 +1,4 @@
-# Anleitung: Laufbursche Blade Mini (eKFV) unlock
+# Anleitung: Laufbursche Blade (eKFV) unlock
 
 > **Machbarkeitsstudie.** Dieses Werkzeug zeigt, was das Bluetooth-Protokoll eines Teverun-Rollers technisch möglich macht, es ist kein fertiges Produkt. Fehlerfreier Betrieb wird nicht versprochen, es gibt keinerlei Gewährleistung. Was du hier tust, tust du auf eigenes Risiko.
 
@@ -11,7 +11,7 @@ Alles passiert im Browser über Web Bluetooth: verbinden, entsperren, sperren, F
 - **iOS:** den Browser **Bluefy** (kostenlos im App Store). Safari und jeder andere iOS-Browser laufen auf der Safari-Engine, die überhaupt kein Web Bluetooth hat.
 - **Android oder Desktop:** **Chrome** oder einen anderen Chromium-Browser. Web Bluetooth ist eingebaut, kein Extra-Browser nötig.
 
-**Einen Teverun Blade Mini (eKFV).** Der Blade hat keine IVCU, sondern nur einen ESC mit MCU. Deshalb ist die eKFV-Drosselung dort keine Firmware-Sperre, sondern schlicht der Geschwindigkeitswert, den die App pro Gang schreibt.
+**Einen Teverun Blade / Blade Mini (eKFV).** Der Blade hat keine IVCU, sondern nur einen ESC mit MCU. Auf Firmware 3.4.6 ist die eKFV-Drosselung keine Firmware-Sperre, sondern schlicht der Geschwindigkeitswert, den die App pro Gang schreibt. Auf 3.4.8 ist die Drossel tief in die ESC-Firmware gewandert und ignoriert jeden BLE-Schreibbefehl, dort ist Sperren/Entsperren nicht möglich.
 
 ---
 
@@ -22,28 +22,30 @@ Alles passiert im Browser über Web Bluetooth: verbinden, entsperren, sperren, F
 3. Tippe auf **Connect** und wähle deinen Scooter in der Auswahl des Browsers. In dieser Liste erscheinen nur Scooter.
 4. Beobachte die Statusanzeige oben rechts: `connecting`, dann `linking`, dann `connected`. `connected` erscheint erst, wenn echte Telemetrie ankommt. Es heißt also, dass die Verbindung Daten trägt, nicht nur, dass der Funk sich einig war.
 
-Danach füllen sich die Anzeigen:
+Danach füllen sich die Live-Kacheln: Geschwindigkeit, Ladung, Spannung, Strom, Gang, Tempomat, Radgröße, Einheit, ABS, Firmware und der Sperrzustand, direkt vom Roller gelesen. Diese Anzeigen erscheinen auf jeder Firmware.
 
-- **Speed aktueller Gang:** der Geschwindigkeitswert des gerade gewählten Gangs, so wie der Controller ihn meldet.
-- **Firmware version:** die Version, die der Controller meldet, auf der Serienfirmware zum Beispiel `R3.4.6`.
+**Erkannte Firmware.** Die Karte oben zeigt die Version, die der Controller meldet, und was das Werkzeug damit zulässt:
+
+- **3.4.6** - Sperren/Entsperren und die Einstellungen sind verfügbar.
+- **3.4.8** - Sperren/Entsperren ist ausgegraut mit Begründung: die Drossel sitzt in der ESC-Firmware und ignoriert jeden BLE-Schreibbefehl.
+- **Jede andere oder noch nicht gelesene Version** - das Werkzeug bleibt nur Anzeige und zeigt einfach alle Felder.
 
 Kommt nichts an, meldet die Seite `no-data` und hält die Verbindung offen. Der Scooter war dann außer Reichweite oder im Schlaf: aufwecken, dann bleibt die Anzeige von allein stehen. Das allererste Verbinden braucht immer die Auswahl des Browsers. Das ist eine Sicherheitsregel des Browsers, die keine Verknüpfung überspringen kann.
 
 ---
 
-## 3. Entsperren und sperren
+## 3. Entsperren und sperren (Firmware 3.4.6)
 
-Das ist der Kern. Der Blade wird nicht über die FIN, den Bluetooth-Namen oder ein Statusbit gesperrt, sondern über die **Geschwindigkeitswerte pro Gang**. Die Original-App weigert sich bei einer TDE-FIN, hohe Werte zu schreiben. Diese Seite schreibt sie direkt.
+Das ist der Kern, und er funktioniert nur auf Firmware **3.4.6**. Der Blade wird nicht über die FIN, den Bluetooth-Namen oder ein Statusbit gesperrt, sondern über die **Geschwindigkeitswerte pro Gang**. Die Original-App weigert sich bei einer TDE-FIN, hohe Werte zu schreiben. Diese Seite schreibt sie direkt.
 
-In der Steuerungs-Karte stehen drei Felder für die deutschen Gänge:
+Die Sperren/Entsperren-Karte hat zwei Schnellfelder:
 
-- **Gang 1** (Standard 45), **Gang 2** (Standard 60), **Gang 3** (Standard 80).
-- Diese drei Felder sind die **entsperrten** Geschwindigkeiten. Du kannst die Werte anpassen.
-- Intern sind das die ESC-Gänge 2, 3 und 4. Gang 1 und Gang 5 gibt es nur in der Auslandsvariante und werden nicht angefasst.
+- **Offene Geschwindigkeit** und **Legale Geschwindigkeit** setzen alle drei deutschen Gänge auf einen Wert.
+- Für unterschiedliche Werte pro Gang öffnest du die **Erweiterten Einstellungen**: ein Raster mit Speed, Sperr-Wert, Anfahrt vorne/hinten, Strom und eABS je Gang. Intern sind die deutschen Gänge die ESC-Gänge 2, 3 und 4; Gang 1 und 5 gibt es nur in der Auslandsvariante und werden nicht angefasst.
 
-**Entsperren** schreibt die drei Werte auf die Gänge. **Sperren** setzt alle drei zurück auf **22**. Der Knopf trägt die passende Aktion: er heißt **Unlock**, solange gesperrt, und **Lock**, solange offen. Er ist bedienbar, sobald verbunden ist und der erste Telemetrie-Frame (`55 71`) angekommen ist.
+**Entsperren** schreibt die offenen Werte auf die Gänge. **Sperren** schreibt die niedrigen eKFV-Sperr-Werte zurück (Standard 10/15/21 - 21 statt 22 hält den Anfahr-Peak unter der eKFV-Grenze). Der Knopf trägt die passende Aktion: er heißt **Unlock**, solange gesperrt, und **Lock**, solange offen. Er wird bedienbar, sobald verbunden ist, der erste Telemetrie-Frame (`55 71`) angekommen ist und die Firmware 3.4.6 ist.
 
-Ein Hinweis zum Zustand: der Blade meldet den Sperr-Zustand nicht sauber in der Telemetrie. Als Rückmeldung siehst du deshalb den tatsächlichen Geschwindigkeitswert des aktuellen Gangs, nicht ein geratenes Schloss-Symbol.
+Die Sperrzustand-Kachel wird aus dem Live-Geschwindigkeitswert pro Gang abgeleitet, nicht aus der FIN oder dem Bluetooth-Namen.
 
 Ein entsperrter Scooter gehört auf Privatgelände. Siehe den [Haftungsausschluss](README.md#disclaimer).
 
@@ -60,7 +62,7 @@ Beide Ansichten lesen nur mit, es wird nichts an den Scooter gesendet. Die Knöp
 
 ## 5. Verknüpfung auf dem Startbildschirm
 
-Eine Verknüpfung öffnet die Seite bereits auf Sperren oder Entsperren gestellt: ein gekoppelter Scooter verbindet sich ohne Auswahl und die Aktion läuft von selbst. Mach eine Verknüpfung für **Unlock** und eine für **Lock**. Der Entsperren-Shortcut schreibt die Standard-Gangwerte (45/60/80).
+Eine Verknüpfung öffnet die Seite bereits auf Sperren oder Entsperren gestellt: ein gekoppelter Scooter verbindet sich ohne Auswahl und die Aktion läuft von selbst. Mach eine Verknüpfung für **Unlock** und eine für **Lock**. Der Entsperren-Shortcut schreibt die Standard-Gangwerte (45/60/80). Auf Firmware, wo Sperren/Entsperren nicht verfügbar ist (3.4.8 oder unbekannt), wird die Verknüpfung mit derselben Begründung wie der Knopf abgelehnt.
 
 ### iOS (Bluefy)
 

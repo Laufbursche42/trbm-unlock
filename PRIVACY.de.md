@@ -20,7 +20,7 @@ Die Anwendung baut in genau zwei Fällen eine Verbindung auf, in keinem anderen:
 
 ### 1. Laden der Seite
 
-Wenn du die Seite öffnest oder neu lädst, holt dein Browser die statischen Dateien vom Anbieter, also `index.html`, `app.js`, `ota.js`, `i18n.js`, `styles.css` und das Symbol. Das ist zum Beispiel GitHub Pages. Der Anbieter sieht dabei zwei Dinge: deine **IP-Adresse** und welche Datei du abgerufen hast. Das sind die üblichen Zugriffsprotokolle, die jede Website hat. Er sieht **nie** Daten des Scooters, Einstellungen oder die FIN, weder beim Laden noch beim Neuladen noch sonst wann. Diese Daten erreichen überhaupt keinen Server. Sie liegen nur auf deinem Gerät und wandern nur über die lokale Bluetooth-Verbindung, siehe unten.
+Wenn du die Seite öffnest oder neu lädst, holt dein Browser die statischen Dateien vom Anbieter, also `index.html`, `app.js`, `i18n.js`, `styles.css` und das Symbol. Das ist zum Beispiel GitHub Pages. Der Anbieter sieht dabei zwei Dinge: deine **IP-Adresse** und welche Datei du abgerufen hast. Das sind die üblichen Zugriffsprotokolle, die jede Website hat. Er sieht **nie** Daten des Scooters, Einstellungen oder die FIN, weder beim Laden noch beim Neuladen noch sonst wann. Diese Daten erreichen überhaupt keinen Server. Sie liegen nur auf deinem Gerät und wandern nur über die lokale Bluetooth-Verbindung, siehe unten.
 
 Die Seite liefert keine Firmware aus. Eine Firmware-Datei, die du zum Flashen auswählst, liest der Browser auf deinem Gerät und schickt sie über Bluetooth an den Scooter. Sie wird nirgendwohin hochgeladen.
 

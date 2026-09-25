@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dependency-free security + structure scanner for the trfm-unlock static web app.
+"""Dependency-free security + structure scanner for the trbm-unlock static web app.
 
 Scans .js / .html / .css for XSS/injection sinks, inline event handlers, inline
 styles, inline scripts, external resources, a missing Content-Security-Policy and

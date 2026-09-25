@@ -1,8 +1,10 @@
 > 🚨 **This tool is moving.** This repository is **no longer maintained** - please switch to the new tool: **[lb-tool-web.pages.dev](https://lb-tool-web.pages.dev/)**. Trouble switching? Open an [issue on GitHub](https://github.com/Laufbursche42/Laufbursche42/issues/new) or send a [PM on the eScooter-Stammtisch forum](https://www.escooter-stammtisch.de/index.php?user/6497-laufbursche/).
 
-# Laufbursche Blade Mini (eKFV) unlock
+# Laufbursche Blade (eKFV) unlock
 
-A static web page that talks to a Teverun Blade Mini (eKFV) over Web Bluetooth. It lifts and re-imposes the speed limit live, straight from the browser. Nothing to install: no app store, no signing, no developer account. It runs in **Bluefy** on iOS and in **Chrome** on Android or desktop.
+A static web page that talks to a Teverun Blade / Blade Mini (eKFV) over Web Bluetooth. It reads the full telemetry and, on the supported firmware, lifts and re-imposes the speed limit live, straight from the browser. Nothing to install: no app store, no signing, no developer account. It runs in **Bluefy** on iOS and in **Chrome** on Android or desktop.
+
+**Firmware gate.** Lock and unlock are only verified on firmware **3.4.6**, so that is the only version where the write controls are active. On **3.4.8** they are greyed out with a reason (the limiter sits deep in the ESC firmware and ignores every BLE write). On any other or not-yet-read firmware the tool stays **read-only** and simply shows every field the Blade Mini shows. The detected firmware is displayed at the top.
 
 > **This is a feasibility study.** It exists to show what a Teverun scooter's Bluetooth protocol makes possible, not to be a finished product. Error-free operation is not promised and there is no warranty of any kind. Whatever you do with it, you do at your own risk. Read the [Disclaimer](#disclaimer) before you connect a scooter.
 
@@ -28,11 +30,14 @@ Then open the printed address in a browser that supports Web Bluetooth.
 
 ## What it does
 
-- **Unlock and lock live** over Bluetooth. Unlock writes a high speed to the German gears (internal ESC gears 2, 3, 4), lock sets them all back to 22 km/h. The values are editable. Unrelated to the FIN or the Bluetooth name.
+- **Unlock and lock live** over Bluetooth (firmware 3.4.6 only). Unlock writes a high speed to the German gears (internal ESC gears 2, 3, 4), lock writes the low eKFV values back. The values are editable, per gear in the advanced settings. Unrelated to the FIN or the Bluetooth name.
+- **Live telemetry:** speed, charge, voltage, current, gear, cruise, wheel size, unit, ABS and the lock state, read straight from the scooter.
 - **Error reports:** read the fault codes the controller and BMS stream by themselves.
-- **Battery info:** pack voltage, current, cell voltages and temperatures the controller reports.
-- **Controller firmware version**, as the controller reports it.
-- **Home-screen shortcuts** that open the page already set to lock or unlock.
+- **Battery info:** pack voltage, current, SOC/SOH, capacity, cycles, cell voltages and temperatures the controller reports.
+- **Detected firmware version**, shown at the top and used to decide what the tool allows.
+- **Basic + advanced settings:** wheel diameter, cruise/Tempomat, and a per-gear expert grid (speed, lock value, start levels, current, eABS).
+- **Full log** with timestamped TX/RX hex, copy, clear and save, plus a public (anonymized) and a verbose diagnostics toggle.
+- **Home-screen shortcuts** that open the page already set to lock or unlock (refused on firmware where lock/unlock is not available).
 
 Hardware: the Teverun **Blade Mini (eKFV)** - an ESC with an MCU, no IVCU. Gears 1 and 5 exist only on the non-German (international) variant and are left untouched.
 

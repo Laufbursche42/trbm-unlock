@@ -1,13 +1,13 @@
-// Koppelt die ?v=-Cache-Bust-Query in index.html an BUILD aus app.js.
-// Vor jedem Commit ausfuehren: node scripts/sync-cachebust.js
-// Ohne das serviert der Browser bei gleichbleibendem ?v= das alte Script aus dem Cache.
+// Couples the ?v= cache-bust query in index.html to BUILD in app.js.
+// Run before every commit: node scripts/sync-cachebust.js
+// Without it the browser serves the old script from cache when ?v= stays the same.
 const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..');
 
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const m = app.match(/const BUILD = 'v(\d+)'/);
-if (!m) { console.error('BUILD nicht in app.js gefunden'); process.exit(1); }
+if (!m) { console.error('BUILD not found in app.js'); process.exit(1); }
 const ver = m[1];
 
 const htmlPath = path.join(root, 'index.html');
@@ -17,7 +17,7 @@ html = html.replace(/\.(js|css)\?v=\d+/g, (s) => s.replace(/\d+$/, ver));
 
 if (html !== before) {
   fs.writeFileSync(htmlPath, html);
-  console.log('cache-bust -> ?v=' + ver + ' (synchronisiert mit BUILD v' + ver + ')');
+  console.log('cache-bust -> ?v=' + ver + ' (synced with BUILD v' + ver + ')');
 } else {
-  console.log('cache-bust bereits auf ?v=' + ver);
+  console.log('cache-bust already at ?v=' + ver);
 }

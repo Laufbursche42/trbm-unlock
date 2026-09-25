@@ -1,24 +1,24 @@
-// TRBM Unlock: a Web Bluetooth tool for the Teverun Blade Mini (eKFV), derived from Laufbursche's
-// trfm-unlock (Fighter Mini). Copyright (c) 2026 Laufbursche (https://github.com/Laufbursche42).
-// Scope: scan, reconnect, lock/unlock, wheel diameter + cruise, and the transport for ota.js.
+// Laufbursche Blade Tool: a Web Bluetooth tool for the Teverun Blade / Blade Mini (eKFV).
+// Copyright (c) 2026 Laufbursche (https://github.com/Laufbursche42).
+// Scope: scan, reconnect, read the full Blade Mini field set, and lock/unlock on firmware 3.4.6.
 // The protocol (CRC-8, 0x18 settings frame, 55 71 parse) is ported 1:1 from the native lb-edition.
 //
-// DIFFERENCE FROM UPSTREAM: lock/unlock here does NOT use the 0x1B TESTLOCK command (which needs
-// patched firmware). Instead it drives the eKFV clamp via the "cruise" (Tempomat) lever inside the
-// stock 0x18 settings frame - reverse-engineered from the native Teverun app v2.0.5 (uni.UNI2202FAB),
-// which serves both the Fighter Mini EKFV and the Blade Mini EKFV, so the frame format is identical.
+// Lock/unlock does NOT use the 0x1B TESTLOCK command (which needs patched firmware). It drives the
+// eKFV clamp via the per-gear speed byte inside the stock 0x18 settings frame - reverse-engineered
+// on firmware 3.4.6. On 3.4.8 the limiter sits in the ESC firmware and ignores every BLE write, so
+// lock/unlock is disabled there; on any other/unknown firmware the tool stays read-only.
 //
 // Runs in a Web Bluetooth browser: Bluefy on iOS, Chrome on Android/desktop. Safari has no BLE.
 
 'use strict';
 
-const BUILD = 'v113';
+const BUILD = 'v114';
 
 // --------------------------- BLE transport constants ---------------------------
 
 // Only real scooters: the BLE name is the FIN, "TDE..." when locked, "T1..." when unlocked. The old
-// broad 'T' matched any T-named device (TVs, phones), so the chooser and auto-reconnect could target
-// non-scooters. These strict prefixes keep the picker (and getDevices) to actual scooters only.
+// broad 'T' matched any T-named device (TVs, phones); these strict prefixes keep the picker (and
+// getDevices) to actual scooters only.
 const NAME_PREFIXES = ['TDE', 'T1'];
 
 // Candidate GATT services the Teverun BLE module exposes. The ISSC (Microchip) Transparent-UART
@@ -27,16 +27,14 @@ const NAME_PREFIXES = ['TDE', 'T1'];
 const ISSC_SERVICE = '49535343-fe7d-4ae5-8fa9-9fafd205e455';
 const ISSC_NOTIFY  = '49535343-1e4d-4bd9-ba61-23c647249616';
 const ISSC_WRITE   = '49535343-aca3-481c-91ec-d85e28a60318';
-// Web Bluetooth can only touch services declared up front (the one hard constraint). Cheap BLE-UART
-// modules use 16-bit UUIDs in the vendor/member ranges 0xFCxx-0xFFxx (HM-10 0xFFE0, member 0xFExx,
-// ISSC alternates, ...), so declare the WHOLE 0xFC00-0xFFFF range plus the known 128-bit UARTs (ISSC,
-// Nordic). That covers almost every module WITHOUT knowing its exact UUID. It also makes the real service
-// appear in getPrimaryServices() and the log, so a new module is identified from a log line, not by hand.
+// Web Bluetooth can only touch services declared up front. Cheap BLE-UART modules use 16-bit UUIDs
+// in the vendor ranges 0xFCxx-0xFFxx, so declare the whole range plus the known 128-bit UARTs (ISSC,
+// Nordic). That covers almost every module without knowing its exact UUID and surfaces it in the log.
 const VENDOR_16BIT = [];
 for (const base of ['fc', 'fd', 'fe', 'ff'])
   for (let i = 0; i < 256; i++)
     VENDOR_16BIT.push('0000' + base + i.toString(16).padStart(2, '0') + '-0000-1000-8000-00805f9b34fb');
-const NORDIC_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';   // Nordic UART: a common non-ISSC/FF BLE-UART module
+const NORDIC_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';   // Nordic UART: a common non-ISSC/FF module
 const OPTIONAL_SERVICES = [ISSC_SERVICE, NORDIC_SERVICE, ...VENDOR_16BIT];
 
 const CONNECT_CODE_INTERVAL_MS = 6500;
@@ -110,13 +108,6 @@ function connectCode(e) {          // handshake / keep-alive: AA 01 10 <e> FF..F
   a[3] = e & 0xFF;
   return finalizeFrame(a);
 }
-// lock/unlock on STOCK firmware via the "cruise" (Tempomat) lever, NOT the 0x1B TESTLOCK command.
-// Reverse-engineered from the native Teverun app (v2.0.5, uni.UNI2202FAB): the eKFV clamp and the
-// speed scale in the ESC are flipped by the cruise mode carried in the normal 0x18 settings frame
-// (cruise bits in bytes a[4] and a[17], see applyCruise/buildSettingFrame). Setting cruise != 0
-// lifts the 22 km/h clamp; cruise 0 re-imposes it. No special firmware needed. The value used for
-// "unlock" is the cruise "auto" mode (1); manual (2) also lifts the clamp.
-const UNLOCK_CRUISE = 1;   // cruise mode written on unlock (1 = auto Tempomat, lifts the eKFV clamp)
 
 // --------------------------- settings state (mirrors SettingsState.java) ---------------------------
 
@@ -132,7 +123,7 @@ const S = {
 };
 
 // Per-gear cache: each gear's OWN speed/current/assist, filled from 55 71 telemetry, so we can write
-// wheel + cruise into every gear WITHOUT disturbing that gear's other per-gear settings.
+// wheel + cruise into every gear without disturbing that gear's other per-gear settings.
 const gearCache = {};
 
 function updateFrom71(t) {
@@ -158,7 +149,7 @@ function updateFrom71(t) {
   S.isUnitMile = (sys & 0x02) !== 0;
   S.atMode = (sys & 0x04) !== 0;
   S.isSmart = (sys & 0x10) !== 0;
-  S.systemStatus6 = (sys >> 6) & 1;   // ESC eKFV-clamp bit (1 = clamped/22, 0 = open); diagnostic mirror of cruise
+  S.systemStatus6 = (sys >> 6) & 1;   // ESC eKFV-clamp bit (1 = clamped/22, 0 = open); read-only diagnostic
   const sp = t[18] & 0xFF;
   S.sleepTime = sp & 0x07;
   S.prTime = (sp >> 3) & 0x1F;
@@ -196,11 +187,8 @@ function buildSettingFrame(n, gearByte, eabsLevel, fStartLevel, rStartLevel, per
   return finalizeFrame(a);
 }
 
-// Wheel + cruise are GLOBAL in the firmware (a single 0x2000029D wheel byte / 0x200002D1 cruise byte),
-// so ONE 0x18 write for the active gear sets them for every gear. Writing all gears was legacy (built
-// when we assumed per-gear wheel); its multi-frame burst could starve the display 0x4c link long enough
-// that the VCU flags the display as gone (0x20000306) and the next display frame trips the power-on
-// boot-lock: a false LOCK on a settings write. One write also never touches another gear's values.
+// Wheel + cruise are global in the firmware, so ONE 0x18 write for the active gear sets them for
+// every gear. Writing all gears in a burst could starve the display link and trip a false boot-lock.
 function writeWheelCruiseAllGears() {
   const cur = S.gear & 0xFF;
   enqueue(buildSettingFrame(2, cur, S.eabsLevel, S.fStartLevel, S.rStartLevel,
@@ -213,13 +201,13 @@ const ERROR_COUNT = 17;     // 55 54 t[2..18], one severity byte per error type
 const CELL_SLOTS = 24;      // 55 51 / 55 55 / 55 56 carry eight cells each
 
 const T = {
-  speed: 0, soc: 0, gear: 0, speedRaw: 0, volt: 0, frameNum: '', fin: '', lock: null,
+  speed: 0, soc: 0, gear: 0, speedRaw: 0, volt: 0, frameNum: '', fin: '', lock: null, swVer: null,
   // Battery detail from 55 52 / 55 53 and the BMS severity array from 55 54. The have* flags say
-  // whether that frame has been seen at all, so a view can show the page placeholder instead of a
-  // zero the scooter never sent.
-  have52: false, have53: false, current: 0, soh: 0, maxCellTemp: 0, minCellTemp: 0,
+  // whether that frame has been seen at all, so a view can show a placeholder instead of a zero.
+  have52: false, have53: false, have72: false, current: 0, soh: 0, maxCellTemp: 0, minCellTemp: 0,
   capacity: 0, chargeCounter: 0, cellCount: 0, maxCellV: 0, minCellV: 0, balance: 0,
   cellMv: null, errors: null,
+  mCurF: 0, mCurR: 0, mTempF: 0, mTempR: 0,
   // Controller status bytes 55 72 t[10] / t[11]: the fault bits behind the error report.
   ecu1: null, ecu2: null,
 };
@@ -228,38 +216,15 @@ function u16(t, i) { return ((t[i] & 0xFF) << 8) | (t[i + 1] & 0xFF); }
 
 // Frame reassembly: a BLE notification is not guaranteed to carry exactly one 20-byte frame (it can
 // be fragmented or batched), so we buffer the bytes and pull out every 20-byte frame that starts
-// with 0x55 and has a valid CRC. The old code assumed 20-byte-aligned notifications and, on a unit
-// that fragments, parsed nothing at all: no telemetry, so the FIN only appeared on disconnect.
+// with 0x55 and has a valid CRC.
 let rxBuf = new Uint8Array(0);
-let diagNotify = 0;
 let diagParsed = false;
-
-// One OTA answer per notification, checked exactly the way ota.js checks it: header 0xCC plus the
-// CRC-8 over the ten bytes behind it. Sharing that test means this can never accept a frame the
-// engine rejects or reject one it would have accepted.
-function isOtaResponse(u) {
-  return u.length >= 12 && u[0] === 0xCC && crc8(u.subarray(1, 11), 10) === (u[11] & 0xFF);
-}
 
 function onNotify(value) {                       // value: DataView
   const len = value.byteLength;
   const u = new Uint8Array(len);
   for (let i = 0; i < len; i++) u[i] = value.getUint8(i);
-  const otaResp = isOtaResponse(u);
-  if (otaResp) confirmLink();                    // an answer from the controller proves the link
-  // A running flash owns the link: the engine gets the raw notification, exactly as the native app
-  // and lbtool.py hand it over. A garbled answer has to reach it too, its 100 ms nudge is the
-  // recovery path for one.
-  if (otaEngine) { otaEngine.onNotify(u); return; }
-  // A scooter waiting in update mode streams no telemetry, it only answers on the OTA path, so an
-  // OTA answer is the only link proof it can give (see the phantom-link timer in connectGatt).
-  if (otaResp) return;
-  if (diagNotify < 3) {                          // log the first raw notifications for diagnosis
-    diagNotify++;
-    let h = '';
-    for (let i = 0; i < Math.min(len, 12); i++) h += u[i].toString(16).padStart(2, '0') + ' ';
-    log('rx ' + len + 'B: ' + h.trim());
-  }
+  if (diagLog) log('RX ' + hexOf(u, Math.min(len, 20)), 'log-rx');
   const merged = new Uint8Array(rxBuf.length + len);
   merged.set(rxBuf, 0);
   merged.set(u, rxBuf.length);
@@ -277,7 +242,7 @@ function onNotify(value) {                       // value: DataView
 }
 
 // A frame from the scooter is the only proof the link is real: iOS reports a connected GATT even for a
-// bonded device far out of range. Telemetry and OTA answers both count.
+// bonded device far out of range.
 function confirmLink() {
   if (linkConfirmed) return;
   linkConfirmed = true;
@@ -286,29 +251,25 @@ function confirmLink() {
   maybeRunDeepAction();
 }
 
-// The unlock (per-gear speed values) was reverse-engineered on firmware 3.4.6. Other firmwares (e.g.
-// 3.4.8) behave differently, so if the controller reports anything else we warn once and name the
-// version. The version comes from the 55 43 frame (t[2].t[3].t[4]) parsed in dispatch().
+// The unlock (per-gear speed values) was reverse-engineered on firmware 3.4.6. The version comes from
+// the 55 43 frame (t[2].t[3].t[4]) parsed in dispatch().
 const SUPPORTED_FW = '3.4.6';
-// 3.4.8 is confirmed to ignore every BLE write (the clamp sits in the ESC firmware), so it is blocked:
-// the user gets a "not supported" notice and cannot set anything. Flip this to true to re-enable 3.4.8
-// testing later - that is the only switch needed, everything else keys off it.
+// 3.4.8 is confirmed to ignore every BLE write (the clamp sits in the ESC firmware), so it is blocked.
+// Flip this to true to re-open 3.4.8 testing later - that is the only switch needed.
 const ALLOW_FW348 = false;
+function isFw348() { return typeof T.swVer === 'string' && T.swVer.indexOf('3.4.8') === 0; }
+// True when the connected scooter runs 3.4.8 and 3.4.8 is currently switched off -> block writes.
+function fw348Blocked() { return isFw348() && !ALLOW_FW348; }
+
 let fwWarned = false;
 function checkFwVersion() {
   if (fwWarned || !T.swVer || T.swVer === SUPPORTED_FW) return;
   fwWarned = true;
-  // The special 3.4.8 "testing possible" wording only shows while 3.4.8 is switched on. When 3.4.8 is
-  // blocked it gets the plain "not supported" notice like any other unsupported firmware.
-  const showTest = isFw348() && ALLOW_FW348;
-  const titleEl = $('fwwarn-title');
-  if (titleEl) titleEl.textContent = t(showTest ? 'fw348Title' : 'fwWarnTitle');
   const msg = $('fwwarn-msg');
   if (msg) {
-    // Build the message with safe DOM nodes (no innerHTML): the version goes into a span styled by
-    // CSS (.fw-ver), the rest is plain text split around the {ver} placeholder.
+    // Safe DOM nodes (no innerHTML): the version goes into a span styled by CSS (.fw-ver).
     while (msg.firstChild) msg.removeChild(msg.firstChild);
-    const parts = t(showTest ? 'fw348Msg' : 'fwWarnMsg').split('{ver}');
+    const parts = t('fwWarnMsg').split('{ver}');
     msg.appendChild(document.createTextNode(parts[0] || ''));
     const ver = document.createElement('span');
     ver.className = 'fw-ver';
@@ -318,25 +279,20 @@ function checkFwVersion() {
   }
   const dlg = $('fwwarn');
   if (dlg && dlg.showModal && !dlg.open) dlg.showModal();
-  log('firmware ' + T.swVer + (isFw348()
-        ? (ALLOW_FW348 ? ' -> 3.4.8 testing enabled' : ' -> 3.4.8 not supported, settings disabled')
-        : ' is not the supported ' + SUPPORTED_FW));
+  log('firmware ' + T.swVer + ' is not the supported ' + SUPPORTED_FW
+      + (isFw348() ? ' -> 3.4.8, lock/unlock disabled' : ' -> read-only'));
 }
 
 function dispatch(t) {
-  if (!diagParsed) { diagParsed = true; log('telemetry ok, first frame 0x' + (t[1] & 0xFF).toString(16)); }
+  if (!diagParsed) { diagParsed = true; log('telemetry ok, first frame 0x' + (t[1] & 0xFF).toString(16), 'log-ok'); }
   confirmLink();                 // first real frame proves the device is truly here -> now "connected"
   switch (t[1]) {
     case 0x71:
       updateFrom71(t);
-      // On the Blade cruise (t[4]) and systemStatus6 (t[17] bit6) stay identical locked vs unlocked,
-      // and the global speed limit reads 100 either way. What actually differs is the per-gear speed
-      // (t[10] -> S.assistSpeedLimit): ~22 when locked, high when unlocked. So we derive the real lock
-      // state from that live value instead of latching a client flag. Threshold 30 sits between the
-      // locked 22 and the open value.
+      // On the Blade the real lock state is the per-gear speed (t[10] -> S.assistSpeedLimit): ~22 when
+      // locked, high when unlocked. Threshold 30 sits between the locked 22 and the open value.
       T.lock = (S.assistSpeedLimit > 30) ? 'unlocked' : 'locked';
       T.gear = t[3] & 0xFF;
-      refreshToggle();
       onSettingsFrame();
       maybeRunDeepAction();      // a shortcut's ?do=lock waits for this first 55 71
       break;
@@ -349,10 +305,10 @@ function dispatch(t) {
       if (T.speedRaw >= 3000 || v <= 0.5) v = 0;
       if (S.isUnitMile) v = v / 1.6093439;
       T.speed = v;
-      T.mCurF = u16(t, 4) * 0.1;     // Motorstrom vorn  = 0.1 * (Byte4:5)
-      T.mCurR = u16(t, 12) * 0.1;    // Motorstrom hinten = 0.1 * (Byte12:13)
-      T.mTempF = t[9] & 0xFF;        // Motortemp vorn (roh, 0 = nicht gemeldet)
-      T.mTempR = t[17] & 0xFF;       // Motortemp hinten (roh)
+      T.mCurF = u16(t, 4) * 0.1;     // front motor current = 0.1 * (byte 4:5)
+      T.mCurR = u16(t, 12) * 0.1;    // rear motor current  = 0.1 * (byte 12:13)
+      T.mTempF = t[9] & 0xFF;        // front motor temp (raw, 0 = not sent)
+      T.mTempR = t[17] & 0xFF;       // rear motor temp (raw)
       T.have72 = true;
       break;
     }
@@ -370,8 +326,7 @@ function dispatch(t) {
       break;
     case 0x53:
       T.balance = t[7] & 0xFF;               // one balancing bit per cell, bit 0 = cell 1
-      // A T2 pack carries the rated capacity in t[10] instead of t[8]. The name is the only source
-      // for that. A device granted before the picker was narrowed can still be a T2.
+      // A T2 pack carries the rated capacity in t[10] instead of t[8]. The name is the only source.
       T.capacity = deviceName.startsWith('T2') ? u16(t, 10) : u16(t, 8);
       T.chargeCounter = u16(t, 12);
       T.cellCount = t[14] & 0xFF;
@@ -380,8 +335,7 @@ function dispatch(t) {
       T.have53 = true;
       break;
     case 0x54: {
-      // Severity per error type: the index is the type, the byte its level. Kept raw here, the
-      // thresholds that decide what counts as active live in collectErrors.
+      // Severity per error type: the index is the type, the byte its level. Thresholds live in collectErrors.
       const errs = new Array(ERROR_COUNT);
       for (let i = 0; i < ERROR_COUNT; i++) errs[i] = t[i + 2] & 0xFF;
       T.errors = errs;
@@ -389,9 +343,12 @@ function dispatch(t) {
     }
     case 0x42: T.frameNum = ascii(t, 2, 18); updateFin(); break;
     case 0x43:
-      // 55 43 version frame: t[2..4] = base VCU sw version (e.g. 5.4.19); t[6] = a build number some
-      // patched firmwares stamp into the hwVer major byte. On stock firmware t[6] is usually 0.
-      if ((t[2] & 0xFF) > 0) T.swVer = (t[2] & 0xFF) + '.' + (t[3] & 0xFF) + '.' + (t[4] & 0xFF);
+      // 55 43 version frame: t[2..4] = base VCU sw version. On stock firmware t[2] > 0 for a real read.
+      if ((t[2] & 0xFF) > 0) {
+        const ver = (t[2] & 0xFF) + '.' + (t[3] & 0xFF) + '.' + (t[4] & 0xFF);
+        if (ver !== T.swVer) log('RX firmware R' + ver, 'log-rx');
+        T.swVer = ver;
+      }
       checkFwVersion();      // warn once if this is not the supported 3.4.6
       break;
     default: break;
@@ -400,7 +357,6 @@ function dispatch(t) {
 }
 
 // 55 51 / 55 55 / 55 56 each carry eight cell voltages as big-endian millivolts, no scaling.
-// base is the index of the first cell in the frame.
 function parseCells(t, base) {
   if (!T.cellMv) T.cellMv = new Array(CELL_SLOTS).fill(0);
   for (let k = 0; k < 8 && base + k < CELL_SLOTS; k++) T.cellMv[base + k] = u16(t, 2 + 2 * k);
@@ -427,7 +383,7 @@ let linkConfirmed = false, linkTimer = null;   // "connected" is shown only once
 let connecting = false;                        // connectGatt is not re-entrant, see the guard there
 
 async function pickAndConnect() {
-  if (!navigator.bluetooth) { log('Web Bluetooth not available. Use Bluefy (iOS) or Chrome.'); return; }
+  if (!navigator.bluetooth) { log('Web Bluetooth not available. Use Bluefy (iOS) or Chrome.', 'log-err'); return; }
   try {
     userDisconnect = false;
     log('scanning...');
@@ -435,29 +391,25 @@ async function pickAndConnect() {
       filters: NAME_PREFIXES.map(p => ({ namePrefix: p })),
       optionalServices: OPTIONAL_SERVICES,
     });
-    log('selected: ' + (dev.name || '') + ' [' + dev.id + ']');
+    log('selected: ' + sens(dev.name || '') + ' [' + sens(dev.id) + ']');
     await connectGatt(dev);                      // adopts the device, see adoptDevice
   } catch (e) {
     log('scan/connect cancelled: ' + e);
   }
 }
 
-// Named handler: an anonymous one leaves a second listener behind on a re-entered connect. Two
-// listeners deliver every response twice, which makes the engine count one ack as two.
+// Named handler: an anonymous one leaves a second listener behind on a re-entered connect.
 function onCharacteristicValue(ev) {
   try { onNotify(ev.target.value); } catch (e) {}
 }
 
-// The listener lives on the characteristic, so it has to be released BEFORE the reference to that
-// characteristic is dropped: otherwise the old one keeps delivering into this page for as long as its
-// GATT link lasts. Every response would then arrive twice.
+// The listener lives on the characteristic, so it has to be released BEFORE the reference to it is
+// dropped: otherwise the old one keeps delivering into this page for as long as its GATT link lasts.
 function detachNotify() {
   const nc = notifyChar;
   notifyChar = null;
   if (!nc) return;
   try { nc.removeEventListener('characteristicvaluechanged', onCharacteristicValue); } catch (e) {}
-  // Not awaited: with the listener gone nothing can arrive either way. Waiting for a CCCD write on a
-  // device that may already be gone would only hold up the connect.
   try { const p = nc.stopNotifications(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
 }
 
@@ -466,21 +418,17 @@ function detachNotify() {
 function adoptDevice(dev) {
   if (!dev || dev === device) return;
   detachNotify();
-  // The replaced device's disconnect handler goes with it: a drop on a scooter this page no longer
-  // talks to would otherwise reset the page state and end a running flash on the new one.
   try { if (device) device.removeEventListener('gattserverdisconnected', onDisconnected); } catch (e) {}
   device = dev;
   deviceName = device.name || '';
+  deviceId = device.id || '';
   updateFin();
   device.addEventListener('gattserverdisconnected', onDisconnected);
 }
 
 async function connectGatt(next) {
   const target = next || device;
-  // Several paths can arrive here at once: a drop during an in-flight reconnect, reconnect()'s own
-  // retry on top of the one onDisconnected scheduled, auto-reconnect racing a tap on Connect.
   if (connecting) { log('connect already in progress'); return; }
-  // The guard has to test the device this call is about to connect to, not the one already held.
   if (connected && target && target.gatt && target.gatt.connected) { log('already connected'); return; }
   connecting = true;
   try {
@@ -488,20 +436,19 @@ async function connectGatt(next) {
     setStatus('connecting');
     notifyReady = false; connected = false;
     rxBuf = new Uint8Array(0);
-    diagNotify = 0; diagParsed = false;                            // fresh frame buffer + diagnostics
+    diagParsed = false;                            // fresh frame buffer + diagnostics
     server = await device.gatt.connect();
     const svc = await pickService(server);
-    if (!svc) { setStatus('no-service'); log('no matching GATT service'); return; }
+    if (!svc) { setStatus('no-service'); log('no matching GATT service', 'log-err'); return; }
     await pickCharacteristics(svc);
-    if (!notifyChar || !writeChar) { setStatus('no-char'); log('notify/write characteristic missing'); return; }
+    if (!notifyChar || !writeChar) { setStatus('no-char'); log('notify/write characteristic missing', 'log-err'); return; }
     await notifyChar.startNotifications();
     notifyChar.removeEventListener('characteristicvaluechanged', onCharacteristicValue);
     notifyChar.addEventListener('characteristicvaluechanged', onCharacteristicValue);
     notifyReady = true; connected = true; linkConfirmed = false;
     reconnectDelay = RECONNECT_BASE_MS;
-    // The GATT link is up, but iOS reports success even for a bonded device that is far out of range
-    // (a phantom link). Do NOT show "connected" yet: wait for a REAL frame (see confirmLink). The
-    // keep-alive below asks the scooter to stream; if nothing arrives in time it was a phantom.
+    // The GATT link is up, but iOS reports success even for a bonded device far out of range (a
+    // phantom link). Do NOT show "connected" yet: wait for a real frame (see confirmLink).
     setStatus('linking');
     renderLive();                  // show the tiles we already know from the BLE name
     try { if (device && device.id) localStorage.setItem(LS_DEVICE, device.id); } catch (e) {}
@@ -514,14 +461,12 @@ async function connectGatt(next) {
   }
 }
 
-// Silence is not proof of a dead link: a scooter left in update mode by a half-finished flash answers
-// on the OTA path only. That is the state a re-flash has to recover, so this reports the silence and
-// keeps the link plus auto-reconnect intact. It never tears a usable link down.
+// Silence is not proof of a dead link: a scooter out of range or just booting answers late. Report
+// the silence and keep the link plus auto-reconnect intact. It never tears a usable link down.
 function onLinkTimeout() {
   linkTimer = null;
-  if (flashOwnsLink()) return;             // a flash owns the link and answers on its own path
   if (linkConfirmed || !connected) return;
-  log('no data yet: out of range or sitting in update mode. Link kept, flashing still possible.');
+  log('no data yet: out of range or still booting. Link kept.', 'log-err');
   setStatus('no-data');
   resetTiles(); refreshSettingsInputs();
 }
@@ -557,12 +502,11 @@ async function pickService(srv) {
       for (const s of services) if (isMatch(s.uuid.toLowerCase())) chosen = s;   // last match wins (as native)
       if (chosen) return chosen;
     }
-    // Direct fetch of the same ISSC/FF set the native app matches. Works even when enumeration is empty.
     const d = await direct(COMMON_SERVICES);
     if (d) return d;
     if (attempt === 0) { log('no service yet, waiting for GATT discovery, retrying'); await sleep(1500); }
   }
-  return await direct(VENDOR_16BIT);   // last resort: batched direct-fetch over the whole declared 0xFCxx-0xFFxx range
+  return await direct(VENDOR_16BIT);   // last resort: batched direct-fetch over the whole declared range
 }
 
 async function pickCharacteristics(svc) {
@@ -591,7 +535,6 @@ function onDisconnected() {
   connected = false; notifyReady = false; linkConfirmed = false;
   if (linkTimer) { clearTimeout(linkTimer); linkTimer = null; }
   stopKeepAlive();
-  if (otaEngine) otaEngine.onDisconnect();   // ends the flash and restores the UI through finished()
   setStatus('disconnected');
   resetTiles();
   refreshSettingsInputs();
@@ -637,32 +580,29 @@ function stopKeepAlive() { if (keepAliveTimer) { clearTimeout(keepAliveTimer); k
 
 const writeQueue = [];
 let writing = false;
-function clearWriteQueue() { writeQueue.length = 0; }
 
-// The flasher writes on its own chain, so the normal queue has to stay off the characteristic for the
-// whole flash: two GATT writes in flight on one characteristic and the browser rejects the loser.
+// Log outgoing frames: the 0x18 settings write is the notable TX, always shown. The 0x01 keep-alive
+// is verbose, so it is only logged when Diagnostics is on.
+function logTx(frame) {
+  const cmd = frame[1] & 0xFF;
+  if (cmd === 0x18) log('TX ' + hexOf(frame, 20), 'log-tx');
+  else if (diagLog) log('TX ' + hexOf(frame, 8), 'log-tx');
+}
+
 function enqueue(frame) {
-  if (flashOwnsLink()) return;
+  logTx(frame);
   writeQueue.push(frame);
   drain();
 }
 async function drain() {
-  if (writing || !notifyReady || flashOwnsLink()) return;
+  if (writing || !notifyReady) return;
   writing = true;
   while (writeQueue.length) {
-    if (flashOwnsLink()) { clearWriteQueue(); break; }   // a flash took over between two writes
     const f = writeQueue.shift();
-    try { await doWrite(f); } catch (e) { log('write error: ' + e); }
+    try { await doWrite(f); } catch (e) { log('write error: ' + e, 'log-err'); }
     await sleep(WRITE_GAP_MS);
   }
   writing = false;
-}
-// A write that is already in flight cannot be recalled, so the flash waits for it to land. Bounded:
-// on a dead link the write never settles and the flash still has to be able to start. Returns false
-// when the cap expired with a write still out, which the caller has to report.
-async function waitWriteIdle() {
-  for (let i = 0; i < 40 && writing; i++) await sleep(25);
-  return !writing;
 }
 async function doWrite(frame) {
   const wc = writeChar;
@@ -674,83 +614,24 @@ async function doWrite(frame) {
 }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// --------------------------- OTA transport ---------------------------
-//
-// The flasher does its own timing (30 ms between packet-data frames), so its writes must NOT go
-// through the 200 ms telemetry queue. They still have to be strictly serialised: two GATT writes in
-// flight give "operation already in progress" and the packet is lost. One promise chain does both.
-
-const OTA_RETRY_MS = 25;
-const OTA_SETTLE_MS = 500;            // how long a frame may stay in flight before the wait is logged
-const OTA_FIRST_TRIES = 40;           // 40 x 25 ms, inside the 1500 ms ota.js waits before START
-
-let otaEngine = null;                 // non-null while a flash runs: notifications route to it
-let otaChain = Promise.resolve();     // serialises OTA writes without adding a gap
-let otaEpoch = 0;                     // bumped on start, cancel and finish, see otaWrite
-let flashPending = false;             // set while a flash is being armed, before the engine exists
-let otaFirstFrame = false;            // armed at flash start for the prepare frame, see otaWrite
-
-// True from the moment a flash is armed until its write chain is idle again. The normal write path and
-// the deep-link actions are fenced off for exactly that window.
-function flashOwnsLink() { return !!otaEngine || flashPending; }
-
-// A frame already handed to the characteristic cannot be recalled, so both the start and the end of a
-// run wait here until the chain is genuinely idle: a normal write on top of an in-flight OTA frame is
-// the one the browser rejects. OTA_SETTLE_MS only decides when the wait is worth a log line.
-function otaChainIdle(chain) {
-  const done = chain ? chain.catch(() => {}) : Promise.resolve();
-  let idle = false;
-  done.then(() => { idle = true; });
-  sleep(OTA_SETTLE_MS).then(() => { if (!idle) log('an OTA frame is still in flight, waiting for it'); });
-  return done;
-}
-
-// Reassigning otaChain does not unqueue the writes already chained onto the old one: they still reach
-// the characteristic. Each write carries the epoch it was queued in then drops out once that run is
-// over, so no frame from a cancelled run can enter the next one.
-function otaWrite(frame) {
-  const epoch = otaEpoch;
-  // The prepare/erase frame goes out ONCE and no retry path re-sends it, so the first frame of a run
-  // retries until the characteristic takes it: a browser rejection would otherwise cost the whole run.
-  // Every later frame has the engine's own resend behind it, so one quick retry is enough there.
-  const tries = otaFirstFrame ? OTA_FIRST_TRIES : 2;
-  otaFirstFrame = false;
-  otaChain = otaChain.then(async () => {
-    for (let i = 0; i < tries; i++) {
-      if (epoch !== otaEpoch) return;
-      try { await otaWriteOnce(frame); return; } catch (e) { if (i + 1 >= tries) throw e; }
-      await sleep(OTA_RETRY_MS);
-    }
-  }).catch(e => { log('ota write dropped: ' + e); });   // keep the chain alive for the next frame
-}
-
-// Opposite preference to doWrite: without-response has no per-frame acknowledgement round trip, which
-// is what keeps the packet stream inside the controller's receive window.
-async function otaWriteOnce(frame) {
-  const wc = writeChar;
-  if (!wc) throw new Error('no write characteristic');
-  if (wc.properties.writeWithoutResponse && wc.writeValueWithoutResponse) return wc.writeValueWithoutResponse(frame);
-  if (wc.writeValueWithResponse) return wc.writeValueWithResponse(frame);
-  return wc.writeValue(frame);
-}
-
 // --------------------------- lock / unlock + wheel / cruise ---------------------------
 //
-// Wheel diameter + cruise are the ONLY user prefs we persist (localStorage). The scooter keeps
-// neither: on lock the wheel is forced to 10 (eKFV), so the app is the sole place the real value
-// survives. On unlock, after the rename-reconnect brings a fresh 55 71, we re-apply both.
+// Wheel diameter + cruise are the only user prefs we persist (localStorage). On lock the wheel is
+// forced to the eKFV value, so the app is the sole place the real value survives. On unlock, after
+// the rename-reconnect brings a fresh 55 71, we re-apply both.
 
 const LS_WHEEL = 'trbm_wheel', LS_CRUISE = 'trbm_cruise', LS_DEVICE = 'trbm_device', LS_LOCK = 'trbm_lock';
 let pendingRestore = false;     // set on unlock; consumed by the first 55 71 after the reconnect
 let restoreArmed = false;       // set once the rename-drop actually happened
+let deviceId = '';              // BLE device id, redacted out of the public log
 
 function savedWheel() { const v = parseFloat(localStorage.getItem(LS_WHEEL)); return isNaN(v) ? null : v; }
 function savedCruise() { const v = parseInt(localStorage.getItem(LS_CRUISE), 10); return isNaN(v) ? null : v; }
+function persistWheel(v) { try { localStorage.setItem(LS_WHEEL, String(v)); } catch (e) {} }
+function persistCruise(v) { try { localStorage.setItem(LS_CRUISE, String(v)); } catch (e) {} }
 
-function persistWheel(v) { localStorage.setItem(LS_WHEEL, String(v)); }
-function persistCruise(v) { localStorage.setItem(LS_CRUISE, String(v)); }
-// Per-gear lock speeds. Riders want the locked gears staggered (not all the same), and a value under
-// 22 keeps the start-up peak under the eKFV limit. Defaults 10/15/21, remembered as a JSON triple.
+// Per-gear lock speeds. Riders want the locked gears staggered, and a value under 22 keeps the
+// start-up peak under the eKFV limit. Defaults 10/15/21, remembered as a JSON triple.
 const LOCK_DEFAULTS = [10, 15, 21];
 function clampLock(v) { return Math.min(Math.max(v, 1), 22); }
 function savedLocks() {
@@ -758,9 +639,9 @@ function savedLocks() {
   catch (e) { return null; }
 }
 function lockValues() { return [1, 2, 3].map(n => clampLock(readNum('g' + n + '-lock', LOCK_DEFAULTS[n - 1]))); }
-function persistLocks() { localStorage.setItem(LS_LOCK, JSON.stringify(lockValues())); }
+function persistLocks() { try { localStorage.setItem(LS_LOCK, JSON.stringify(lockValues())); } catch (e) {} }
 
-// User sets the wheel diameter (open mode). Save it, then write the full 0x18 with the new wheel.
+// User sets the wheel diameter (unlocked only). Save it, then write the full 0x18 with the new wheel.
 function setWheel(v) {
   if (!requireReady() || !requireUnlocked('wheel size')) return;
   S.wheel = v;
@@ -769,24 +650,15 @@ function setWheel(v) {
   log('wheel set to ' + v + ' (saved)');
 }
 
-// User sets cruise directly: 0 off (locked/22), 1 auto, 2 manual (both lift the eKFV clamp). This is
-// the same lever as lock/unlock, just with the mode choice exposed, so it stays settable while locked
-// (it IS how you unlock). Save it, then write the full 0x18.
+// User sets cruise: 0 off, 1 auto, 2 manual. Stays settable while locked. Save it, then write 0x18.
 function setCruise(v) {
   if (!requireReady()) return;
   S.cruise = v;
   persistCruise(v);
   writeWheelCruiseAllGears();
-  T.lock = (v === 0) ? 'locked' : 'unlocked';   // optimistic; streamed 55 71 cruise confirms
   refreshToggle();
   log('cruise set to ' + v + ' (saved)');
 }
-
-// Lock/unlock on the Blade (ESC + MCU, NO IVCU): the eKFV limit is not a firmware clamp, it is just
-// the speed values the app writes. So unlock = write a HIGH per-gear speed + max speed on every gear,
-// lock = write the low eKFV values. The MCU applies whatever it is told. This mirrors what the pimped
-// stock app does (it only removes the UI gate so the app sends high values). Cruise / systemStatus6
-// are NOT the lever on the Blade (both stayed identical locked vs unlocked in the captures).
 
 function readNum(id, dflt) {
   const el = $(id);
@@ -794,9 +666,8 @@ function readNum(id, dflt) {
   return (isNaN(v) || v < 0) ? dflt : Math.min(v, 100);
 }
 
-// Start level (Anfahrts-Level) test field: the value is the low nibble of a[8]/a[9], so 0..15 fit on
-// the wire. The native app caps the UI at 5; here it goes to 15 to test whether the firmware accepts
-// more. Empty field returns null -> the mirrored (unchanged) level is written.
+// Start level / eABS field: the value is the low/high nibble of a[8]/a[9], so 0..15 fit on the wire.
+// Empty field returns null -> the mirrored (unchanged) level is written.
 function readLevel(id) {
   const el = $(id);
   if (!el || el.value === '') return null;
@@ -809,67 +680,46 @@ function readLevel(id) {
 const DE_GEARS = [2, 3, 4];
 
 // Write one 0x18 frame per German gear (internal 2/3/4), setting that gear's speed (a[10]). Everything
-// else (eabs/start levels, currents, global max via S.speedLimit) is mirrored from the last 55 71.
-// vals[i] is the speed for DE_GEARS[i]. Confirmed lever from the captures: Byte10 = 22 locked, 60 open.
-function isFw348() { return typeof T.swVer === 'string' && T.swVer.indexOf('3.4.8') === 0; }
-// True when the connected scooter runs 3.4.8 and 3.4.8 is currently switched off -> block all settings.
-function fw348Blocked() { return isFw348() && !ALLOW_FW348; }
-
-function writeGearSpeeds(vals, forceCruise) {
-  // vals = [g1, g2, g3] = the three entered speeds (rider gears 1/2/3 = internal ESC 2/3/4).
-  // 3.4.8 test mode: the 3.4.6-style write to gears 2/3/4 did nothing on 3.4.8, and a 3.4.8 blade
-  // was seen running gears 2 and 3 with very low per-gear bytes. So on 3.4.8 we write ALL FIVE
-  // internal gears, mapping the three fields across them, to cover whatever gear the blade uses.
-  const t348 = isFw348();
-  // plan: [internalGear, speed, riderFieldNumber(0 = no dedicated level field)]
-  const plan = t348
-    ? [[1, vals[0], 1], [2, vals[0], 1], [3, vals[1], 2], [4, vals[2], 3], [5, vals[2], 3]]
-    : [[2, vals[0], 1], [3, vals[1], 2], [4, vals[2], 3]];
+// else is mirrored from the last 55 71. vals[i] is the speed for DE_GEARS[i]. Confirmed lever from the
+// captures: byte10 = 22 locked, ~60 open. This is the clean 3.4.6 path (3.4.8 never reaches here).
+function writeGearSpeeds(vals) {
+  const plan = [[2, vals[0], 1], [3, vals[1], 2], [4, vals[2], 3]];   // [internalGear, speed, riderField]
   const notes = [];
   const curDefaults = [20, 25, 30];
-  // 3.4.8-Test: der per-Gang-Speed allein wird vom harten Klemm-Cap ueberschrieben. Die
-  // urspruengliche Erkenntnis war, dass der Tempomat (cruise=2) im ESC die Klemme kippt. Also
-  // beim Entsperren auf 3.4.8 cruise=2 in a[4]/a[17] mitschreiben. Beim Sperren nicht.
-  const prevCruise = S.cruise;
-  const clampTest = t348 && forceCruise;
-  if (clampTest) { S.cruise = 2; log('3.4.8 Klemm-Test: cruise=2 (Tempomat) wird mitgeschrieben, a[4] Bit2.'); }
   for (const [g, spd, rider] of plan) {
-    const c = gearCache[g] || {};
-    const eabsIn = rider ? readLevel('g' + rider + '-eabs') : null;   // null (empty) = default 2
+    const eabsIn = readLevel('g' + rider + '-eabs');   // null (empty) = default 2
     const eabs = (eabsIn != null) ? eabsIn : 2;
-    const fsIn = rider ? readLevel('g' + rider + '-fs') : null;       // null (empty) = default 5
-    const rsIn = rider ? readLevel('g' + rider + '-rs') : null;
+    const fsIn = readLevel('g' + rider + '-fs');       // null (empty) = default 5
+    const rsIn = readLevel('g' + rider + '-rs');
     const fs = (fsIn != null) ? fsIn : 5;
     const rs = (rsIn != null) ? rsIn : 5;
-    const cur = rider ? readNum('g' + rider + '-cur', curDefaults[rider - 1] || 25) : 25;
+    const cur = readNum('g' + rider + '-cur', curDefaults[rider - 1] || 25);
     enqueue(buildSettingFrame(2, g, eabs, fs, rs, spd & 0xFF, cur, cur));
-    if (fsIn != null || rsIn != null || eabsIn != null) notes.push('Gang ' + rider + ' Anfahrt v=' + fs + ' h=' + rs + ' eABS=' + eabs + ' Strom=' + cur);
+    if (fsIn != null || rsIn != null || eabsIn != null) notes.push('gear ' + rider + ' start f=' + fs + ' r=' + rs + ' eABS=' + eabs + ' current=' + cur);
   }
-  if (clampTest) S.cruise = prevCruise;
-  if (t348) log('3.4.8-Testmodus aktiv: alle Gaenge 1-5 geschrieben (' + vals.join('/') + ').');
-  if (notes.length) log('Anfahrts-Level Test: ' + notes.join(' | '));
+  if (notes.length) log('advanced levels: ' + notes.join(' | '));
 }
 
 function unlock() {
   if (!requireReady()) return;
   const v = [readNum('g1-in', 45), readNum('g2-in', 60), readNum('g3-in', 80)];
-  writeGearSpeeds(v, true);
+  writeGearSpeeds(v);
   T.lock = 'unlocked';
-  log('entsperrt: Gang 1/2/3 (ESC 2/3/4) = ' + v.join(' / '));
+  log('unlocked: gear 1/2/3 (ESC 2/3/4) = ' + v.join(' / '), 'log-ok');
   refreshToggle();
 }
 
 function lock() {
   if (!requireReady()) return;
   const lv = lockValues();
-  writeGearSpeeds(lv, false);
+  writeGearSpeeds(lv);
   T.lock = 'locked';
-  log('gesperrt: Gang 1/2/3 = ' + lv.join(' / '));
+  log('locked: gear 1/2/3 = ' + lv.join(' / '), 'log-ok');
   refreshToggle();
 }
 
 // Called on every 55 71. When a restore is armed (unlock happened, link dropped and came back),
-// re-apply the saved wheel + cruise once, exactly like the native maybeRestoreFinSettings.
+// re-apply the saved wheel + cruise once.
 function onSettingsFrame() {
   if (pendingRestore && restoreArmed && S.received71) {
     const w = savedWheel(), c = savedCruise();
@@ -881,26 +731,18 @@ function onSettingsFrame() {
   }
 }
 
-// A Blade is identified by the model code in the MIDDLE of the FIN (BLE name), NOT the prefix.
-// The prefix (TDE locked / T1 unlocked / INT) only says "Tde scooter", which also includes the
-// Fighter Mini EKFV. The app's own decoder reads characters 7-9 (substring(6,9)) as the model code:
-// "BME"/"BMP"/"BMU" -> BLADE MINI, "FME.." -> Fighter Mini, "BQ.." -> Blade Q, etc. So a Blade Mini
-// is exactly a name whose middle code starts with "BM".
-function bladeModelCode() { return (deviceName || '').substring(6, 9); }
-function isBlade() { return bladeModelCode().startsWith('BM'); }
-
-// Controls are usable on any connected scooter once telemetry flows - EXCEPT a blocked firmware.
-// Right now only 3.4.8 is blocked (it ignores every write); other firmwares just get a warning modal.
-// isBlade()/fwTestable() stay defined for messaging only, not for gating.
-function fwTestable() { return T.swVer === SUPPORTED_FW || isFw348(); }
-function settingsAllowed() {
-  return connected && S.received71 && !fw348Blocked();
+// Central gate: lock/unlock and every 0x18 write are enabled ONLY on the supported 3.4.6. 3.4.8,
+// any other version and the pre-read unknown state are all read-only (the safe default).
+function lockUnlockAllowed() {
+  return connected && S.received71 && T.swVer === SUPPORTED_FW;
 }
+const settingsAllowed = lockUnlockAllowed;   // wheel/cruise/gear grid share the same gate
 
 const GEAR_INPUT_IDS = [
   'g1-in', 'g1-lock', 'g1-fs', 'g1-rs', 'g1-cur', 'g1-eabs',
   'g2-in', 'g2-lock', 'g2-fs', 'g2-rs', 'g2-cur', 'g2-eabs',
   'g3-in', 'g3-lock', 'g3-fs', 'g3-rs', 'g3-cur', 'g3-eabs',
+  'speed-open', 'speed-legal',
 ];
 function refreshGearInputs() {
   const ok = settingsAllowed();
@@ -909,263 +751,27 @@ function refreshGearInputs() {
 
 function requireReady() {
   if (!connected) { log('connect first'); return false; }
-  if (fw348Blocked()) { log('firmware 3.4.8 is not supported - settings are disabled'); return false; }
   if (!S.received71) { log('waiting for telemetry (55 71) before writing settings'); return false; }
+  if (T.swVer !== SUPPORTED_FW) {
+    log('lock/unlock is only available on firmware ' + SUPPORTED_FW
+        + (isFw348() ? ' - 3.4.8 ignores every BLE write' : T.swVer ? ' - version ' + T.swVer + ' is read-only' : ' - firmware not read yet'), 'log-err');
+    return false;
+  }
   return true;
 }
 
-// Wheel size and cruise are only settable on an UNLOCKED scooter: the firmware discards the write
-// otherwise. The inputs are already disabled while locked; this is the second guard so a deep-link,
-// a stale page or a console call cannot push a write the controller would silently drop.
+// Wheel size is only settable while unlocked: the firmware discards it otherwise. Second guard so a
+// deep-link, a stale page or a console call cannot push a write the controller would silently drop.
 function requireUnlocked(what) {
   if (T.lock === 'locked') { log('unlock the scooter first to change the ' + what); return false; }
   return true;
 }
 
-// --------------------------- firmware flasher (ota.js) ---------------------------
-//
-// This page ships no firmware: the user supplies the file, ota.js checks it and runs the flash.
-
-let fwText = null;      // the text of the accepted file, kept until the flash starts
-let fwCheck = null;     // the window.OTA.checkImage result for it
-// The file the open dialog describes and the flash then runs, captured when the dialog opens. The
-// picker stays disabled from that moment, so what the user confirms is what goes on the wire.
-let flashChk = null;
-let flashArmed = false; // the confirmation dialog is open and waiting for an answer
-
-// Controls that must not fire while a flash runs: an extra frame or a disconnect breaks the stream.
-const FLASH_LOCK_IDS = ['btn-conn', 'btn-toggle', 'wheel-in', 'btn-set-wheel', 'cruise-in', 'btn-set-cruise',
-                        'btn-err', 'btn-bat'];
-
-// Blob.text() is missing on older WebKit, where Bluefy still has to work.
-function readFileText(file) {
-  if (file.text) return file.text();
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = () => reject(r.error || new Error('read failed'));
-    r.readAsText(file);
-  });
-}
-
-// The verdict is kept, not just drawn: a language switch has to redraw the same result.
-let fwVerdict = null;   // { key, ok, chk } for an accepted file, { key, ok, name, err } for a refused one
-
-function showFwVerdict(v) { fwVerdict = v; renderFwVerdict(); }
-
-// Built as DOM nodes, not markup: the headline and the detail carry a user-supplied file name.
-function renderFwVerdict() {
-  const host = $('fw-check');
-  if (!host || !fwVerdict) return;
-  const v = fwVerdict;
-  const detail = v.chk
-    ? (v.chk.name + '  ' + t('fwVersion') + ' ' + (v.chk.version || '?') + '  '
-       + v.chk.bytes + ' ' + t('fwBytes') + '  ' + v.chk.packets + ' ' + t('fwPackets')
-       + '  CRC ' + v.chk.calcCrc)
-    : (v.name + ': ' + v.err);
-  host.textContent = '';
-  const box = document.createElement('div');
-  box.className = v.ok ? 'verdict' : 'verdict bad';
-  const b = document.createElement('b');
-  b.textContent = t(v.key);
-  const d = document.createElement('span');
-  d.className = 'detail';
-  d.textContent = detail;
-  box.appendChild(b);
-  box.appendChild(d);
-  host.appendChild(box);
-}
-
-async function onFwFile(file) {
-  if (!file) return;
-  fwText = null; fwCheck = null;
-  refreshFlashButtons();
-  let text;
-  try {
-    text = await readFileText(file);
-  } catch (e) {
-    showFwVerdict({ ok: false, key: 'fwReadFail', name: file.name, err: String(e) });
-    return;
-  }
-  try {
-    const chk = window.OTA.checkImage(text, file.name);
-    fwText = text; fwCheck = chk;
-    showFwVerdict({ ok: true, key: chk.isVcu ? 'fwOkVcu' : 'fwOkBms', chk: chk });
-    log('firmware file ready: ' + chk.name + ' v' + chk.version + ' ' + chk.bytes + ' bytes CRC ' + chk.calcCrc);
-  } catch (e) {
-    const why = (e && e.message) ? e.message : String(e);
-    showFwVerdict({ ok: false, key: 'fwBad', name: file.name, err: why });
-    log('firmware file rejected: ' + why);
-  }
-  refreshFlashButtons();
-}
-
-// Choose file needs a link, Flash needs a checked file as well. While a flash runs the Flash button
-// is the only way out, so it turns into Cancel.
-function refreshFlashButtons() {
-  const pick = $('btn-pick'), flash = $('btn-flash'), file = $('fw-file');
-  // The open confirmation counts as busy: picking a second file must not change what is flashed.
-  const busy = flashOwnsLink() || flashArmed;
-  if (pick) pick.disabled = !connected || busy;
-  if (file) file.disabled = busy;
-  if (!flash) return;
-  if (otaEngine) {
-    flash.textContent = t('btnCancel');
-    flash.dataset.act = 'cancel';
-    flash.disabled = false;
-    return;
-  }
-  flash.textContent = t('btnFlash');
-  flash.dataset.act = 'flash';
-  flash.disabled = !connected || !fwText;
-}
-
-function setControlsForFlash(flashing) {
-  FLASH_LOCK_IDS.forEach(id => { const el = $(id); if (el) el.disabled = flashing; });
-  if (!flashing) { refreshToggle(); refreshSettingsInputs(); refreshInfoButtons(); }
-}
-
-// Both the progress line and the result line are kept as values, so a language switch
-// mid-flash redraws them instead of leaving the old language on screen.
-let fwProgress = null;   // { percent, packet, count, phase }
-let fwResult = null;     // { success, message, phase }
-
-function setFwProgress(percent, packet, count, phase) {
-  fwProgress = { percent: percent, packet: packet, count: count, phase: phase };
-  fwResult = null;
-  renderFwProgress();
-}
-
-function renderFwProgress() {
-  if (!fwProgress) return;
-  const p = fwProgress;
-  const prog = $('fw-progress');
-  if (prog) prog.hidden = false;
-  const bar = $('fw-bar');
-  if (bar) bar.style.width = Math.max(0, Math.min(100, p.percent)) + '%';
-  const ph = $('fw-phase');
-  if (ph) {
-    ph.textContent = p.count
-      ? fmt(t('progPacket'), { n: p.packet, m: p.count, phase: tPhase(p.phase) })
-      : tPhase(p.phase);
-  }
-}
-
-function renderFwResult() {
-  const ph = $('fw-phase');
-  if (!ph || !fwResult) return;
-  ph.textContent = fwResult.success
-    ? t('fwDone')
-    : fmt(t('fwStopped'), { phase: tPhase(fwResult.phase), msg: tMessage(fwResult.message) });
-}
-
-// The dialog names the file it is about to flash. Text, not markup: the name comes from the user.
-function renderDlgFile() {
-  const el = $('dlg-file');
-  if (!el) return;
-  el.textContent = flashChk
-    ? fmt(t('dlgFile'), { name: flashChk.name, version: flashChk.version || '?',
-                          bytes: flashChk.bytes, packets: flashChk.packets })
-    : '';
-}
-
-// The confirm button stays dead until the rider says they read the disclaimer.
-function syncFlashConsent() {
-  const consent = $('dlg-consent'), ok = $('btn-warn-ok');
-  if (ok) ok.disabled = !(consent && consent.checked);
-}
-
-function askFlash() {
-  if (!connected || !fwCheck || flashOwnsLink() || flashArmed) return;
-  const dlg = $('flash-warn');
-  if (!dlg || !dlg.showModal) { log('this browser cannot show the confirmation, flashing not started'); return; }
-  // The file is captured HERE and the picker is disabled until the dialog is answered, so the file the
-  // dialog describes is the one startFlash hands to the engine.
-  flashChk = fwCheck;
-  flashArmed = true;
-  renderDlgFile();
-  // Asked fresh every time: the tick from the previous dialog never carries over.
-  const consent = $('dlg-consent');
-  if (consent) consent.checked = false;
-  syncFlashConsent();
-  refreshFlashButtons();
-  // Stopped here, not at flash start: a connect-code frame enqueued while the dialog is open could
-  // still be in flight when the first OTA frame goes out. Restarted from the dialog's close event.
-  stopKeepAlive();
-  dlg.showModal();
-}
-
-async function startFlash() {
-  if (!connected || !flashChk || flashOwnsLink()) return;
-  flashPending = true;                                 // fence the normal write path before anything else
-  try {
-    stopKeepAlive();
-    clearWriteQueue();      // a connect-code frame inside the packet stream breaks the flash
-    if (linkTimer) { clearTimeout(linkTimer); linkTimer = null; }   // no telemetry comes during a flash
-    otaEpoch++;             // nothing queued before this moment may reach the characteristic
-    const settling = otaChain;
-    otaChain = Promise.resolve();
-    const idle = await waitWriteIdle();
-    await otaChainIdle(settling);     // a frame of the previous run may still be in flight
-    // As the native app: the flag is dropped so a write whose promise never settles cannot keep the
-    // normal queue blocked for the rest of the session.
-    writing = false;
-    if (!idle) log('a normal write is still in flight, the update request goes out with retries');
-    if (!connected) { log('link lost before the flash started'); flashPending = false; refreshFlashButtons(); return; }
-    setControlsForFlash(true);
-    setFwProgress(0, 0, 0, 'preparing');
-    const engine = new window.OTA.OtaEngine(flashChk, {
-      write: otaWrite,
-      log: log,
-      progress: p => setFwProgress(p.percent, p.packet, p.count, p.phase),
-      finished: onFlashFinished,
-    });
-    otaEngine = engine;     // set before start(): the first response must already route to the engine
-    refreshFlashButtons();
-    log('flashing ' + flashChk.name + ', keep the scooter on and stay in range');
-    otaFirstFrame = true;   // the engine's first write is the prepare frame, which may not be lost
-    engine.start();
-  } catch (e) {
-    flashPending = false;
-    log('flash could not start: ' + e);
-    setControlsForFlash(false);
-    refreshFlashButtons();
-  }
-}
-
-function onFlashFinished(success, message, phase) {
-  otaEngine = null;                   // the engine is done; the fence stays up until its chain is idle
-  otaEpoch++;                         // frames still queued from this run must not reach the next one
-  const settling = otaChain;
-  otaChain = Promise.resolve();
-  rxBuf = new Uint8Array(0);          // drop OTA bytes so telemetry parsing resyncs cleanly
-  if (success) {
-    setFwProgress(100, flashChk ? flashChk.packets : 0, flashChk ? flashChk.packets : 0, 'done');
-    log('flash finished: ' + message + '. Switch the scooter off and on again to run the new firmware.');
-  } else {
-    log('flash stopped in ' + phase + ': ' + message
-      + '. The scooter stays in update mode until a flash completes, so flash again before riding.');
-  }
-  // The log keeps the wording ota.js produced (English, the way the guide quotes it);
-  // the line under the bar is the translated one.
-  fwResult = { success: success, message: message, phase: phase };
-  renderFwResult();
-  // The controls and the keep-alive come back only once the chain is idle: a tap or a settings restore
-  // would otherwise put a normal frame on the wire while the last OTA frame is still in flight.
-  otaChainIdle(settling).then(() => {
-    flashPending = false;
-    setControlsForFlash(false);
-    refreshFlashButtons();
-    if (connected && notifyReady && !flashOwnsLink()) startKeepAlive();
-  });
-}
-
 // --------------------------- shortcut deep-link + auto-reconnect ---------------------------
 //
-// A home-screen shortcut (iOS Shortcuts / Android home-screen icon) opens the page with ?do=lock or
-// ?do=unlock. On load we reconnect to the last granted scooter via getDevices(): no chooser, works
-// in Bluefy (iOS) and Chrome. Then the action runs once connected. getDevices()/auto-connect need no
-// fresh picker, but the scooter must be on and in range; otherwise the user just taps Connect.
+// A home-screen shortcut opens the page with ?do=lock or ?do=unlock. On load we reconnect to the last
+// granted scooter via getDevices(): no chooser. The action runs once connected AND the firmware gate
+// allows it; on a blocked/unknown firmware the shortcut is refused with the same reason as the UI.
 
 let pendingDeepAction = null;     // 'lock' | 'unlock' parsed from the URL, run once after connect
 
@@ -1178,23 +784,24 @@ function parseDeepLink() {
 }
 
 function maybeRunDeepAction() {
-  // A flash owns the link, so the shortcut waits: it runs on the first telemetry frame afterwards.
-  if (!pendingDeepAction || !connected || flashOwnsLink()) return;
-  if (pendingDeepAction === 'unlock') {
-    if (!S.received71) return;               // unlock writes a full 0x18, needs a 55 71 first
+  if (!pendingDeepAction || !connected || !S.received71) return;   // both actions write a full 0x18
+  if (lockUnlockAllowed()) {
+    const act = pendingDeepAction;
     pendingDeepAction = null;
-    log('shortcut: auto-unlock');
-    unlock();
-  } else if (pendingDeepAction === 'lock') {
-    if (!S.received71) return;               // lock needs a 55 71 first
+    log('shortcut: auto-' + act);
+    if (act === 'unlock') unlock(); else lock();
+    return;
+  }
+  // Firmware known but not 3.4.6 -> refuse the shortcut with the reason. Unknown -> keep waiting.
+  if (T.swVer) {
+    const act = pendingDeepAction;
     pendingDeepAction = null;
-    log('shortcut: auto-lock');
-    lock();
+    log('shortcut ' + act + ' refused: '
+        + (isFw348() ? '3.4.8 ignores every BLE write' : 'firmware ' + T.swVer + ' is read-only'), 'log-err');
   }
 }
 
 // Reconnect to a previously paired scooter without showing the chooser (Web Bluetooth getDevices()).
-// A first-time visitor has nothing granted yet, so nothing happens and the user taps Connect.
 async function tryAutoReconnect() {
   if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return;
   try {
@@ -1206,8 +813,8 @@ async function tryAutoReconnect() {
              || null;
     if (!dev) return;
     userDisconnect = false;
-    log('auto-reconnect: ' + (dev.name || dev.id));
-    await connectGatt(dev);                      // adopts the device, see adoptDevice
+    log('auto-reconnect: ' + sens(dev.name || dev.id));
+    await connectGatt(dev);
   } catch (e) {
     setStatus('disconnected');
     log('auto-reconnect skipped: ' + e);
@@ -1219,69 +826,183 @@ async function tryAutoReconnect() {
 function $(id) { return document.getElementById(id); }
 function setStatus(s) {
   const el = $('status'); if (el) { el.textContent = s; el.dataset.state = s; }
-  // Single Connect/Disconnect control: reads "Disconnect" while connected or connecting, "Connect" otherwise.
   const cb = $('btn-conn');
   if (cb) {
-    // "no-data" keeps the GATT link, so the control has to offer Disconnect there as well.
     const on = (s === 'connecting' || s === 'linking' || s === 'connected' || s === 'no-data');
     cb.textContent = on ? t('btnDisconnect') : t('btnConnect');
     cb.dataset.act = on ? 'disconnect' : 'connect';
   }
-  refreshFlashButtons();   // both flasher buttons need a link and every state change decides that
-  refreshInfoButtons();    // the two info views need one as well
+  refreshInfoButtons();
 }
-function log(m) {
-  const el = $('log'); if (!el) return;
-  el.textContent = ('[' + new Date().toLocaleTimeString() + '] ' + m + '\n') + el.textContent;
+
+// --------------------------- log panel (lb-tool-web model) ---------------------------
+//
+// Timestamped, appended newest-at-bottom with autoscroll, coloured TX/RX/ok/err, buffered so a
+// re-render (the Public Log toggle) can rebuild it. Copy / clear / save all use the same redacted text.
+
+let logBuffer = [];
+let publicLog = true;
+let diagLog = false;
+
+function hexOf(bytes, max) {
+  let h = '';
+  const n = Math.min(bytes.length, max || bytes.length);
+  for (let i = 0; i < n; i++) h += (bytes[i] & 0xFF).toString(16).padStart(2, '0') + ' ';
+  return h.trim();
 }
-// The single lock/unlock control reflects the current state: "Unlock" when the scooter is locked,
-// "Lock" when it is open. The state is derived from the live 55 71 per-gear speed (t[10] ->
-// S.assistSpeedLimit) in the 0x71 handler, which sets T.lock: ~22 means locked, a high value means
-// unlocked. It is NEVER inferred from the FIN / BLE name. Until a real 55 71 sets T.lock the state
-// is shown as unknown ("reading...") and the button is disabled.
+// Wrap a value that should be masked in the public log (FIN / BLE name / device id).
+function sens(s) { return '\x01' + String(s) + '\x01'; }
+
+function redact(text) {
+  let s = String(text);
+  if (deviceId) s = s.split(deviceId).join('[redacted-id]');
+  s = s.replace(/\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b/g, '[redacted-mac]');
+  s = s.replace(/\b(secret|token|key|aes|pwd|password|pin|mac|serial|vin|uid|imei)\b(\s*[:=]\s*)("?)([^\s",]+)\3/gi,
+    function (m, k, sep) { return k + sep + '[redacted]'; });
+  s = s.replace(/\b[0-9A-Fa-f]{16,}\b/g, '[redacted-hex]');
+  return s;
+}
+// Public log on = mask the driver-marked spans (\x01..\x01, e.g. FIN) and run redaction. Off = the
+// full raw line (local debugging only, do not share).
+function anonymize(s) {
+  if (publicLog === false) return s.replace(/\x01/g, '');
+  return redact(s.replace(/\x01[^\x01]*\x01/g, 'XX').replace(/\x01/g, ''));
+}
+function log(msg, cls) {
+  const ts = new Date().toISOString().slice(11, 19);
+  const raw = '[' + ts + '] ' + msg;
+  logBuffer.push({ raw: raw, cls: cls || '' });
+  const pre = $('log');
+  if (pre) {
+    const span = document.createElement('span');
+    if (cls) span.className = cls;
+    span.textContent = anonymize(raw) + '\n';
+    pre.appendChild(span);
+    pre.scrollTop = pre.scrollHeight;
+  }
+}
+function renderLog() {
+  const pre = $('log'); if (!pre) return;
+  pre.textContent = '';
+  logBuffer.forEach(function (e) {
+    const span = document.createElement('span');
+    if (e.cls) span.className = e.cls;
+    span.textContent = anonymize(e.raw) + '\n';
+    pre.appendChild(span);
+  });
+  pre.scrollTop = pre.scrollHeight;
+}
+function clearLog() { logBuffer = []; const pre = $('log'); if (pre) pre.textContent = ''; log(t('logCleared')); }
+function copyLog() {
+  const text = logBuffer.map(function (e) { return anonymize(e.raw); }).join('\n');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { log(t('logCopied'), 'log-ok'); },
+      function () { log('clipboard write failed', 'log-err'); });
+  } else { log('clipboard API unavailable', 'log-err'); }
+}
+function saveLog() {
+  const text = logBuffer.map(function (e) { return anonymize(e.raw); }).join('\n');
+  try {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'laufbursche42-log.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    log(t('logSaved'), 'log-ok');
+  } catch (e) { log('save failed: ' + e.message, 'log-err'); }
+}
+
+// The single lock/unlock control reflects the current state: "Unlock" when locked, "Lock" when open.
+// The state is derived from the live 55 71 per-gear speed. Enabled only when 3.4.6 is confirmed.
 function refreshToggle() {
   const btn = $('btn-toggle');
   if (!btn) return;
-  if (otaEngine) { btn.disabled = true; return; }   // a flash owns the link, no lock frames meanwhile
-  // The Blade gives no readable lock state, so the button is NOT gated on one: it is actionable as
-  // soon as a 55 71 arrived (a per-gear write needs the mirrored state). The label follows the
-  // user-latched T.lock; unknown defaults to "unlock" (a fresh eKFV Blade is the locked one).
   const locked = (T.lock !== 'unlocked');
   btn.textContent = locked ? t('btnUnlock') : t('btnLock');
   btn.dataset.action = locked ? 'unlock' : 'lock';
-  // Only a Blade on the supported 3.4.6 may change settings. Everything else keeps the button off.
-  btn.disabled = !settingsAllowed();
+  btn.disabled = !lockUnlockAllowed();
 }
+
+// The detected-firmware indicator: single source of truth for what the tool allows.
+function fwVerdict() {
+  if (T.swVer === SUPPORTED_FW) return { cls: '', text: t('fwState346'), reason: null };
+  if (isFw348()) return { cls: 'caution', text: t('fwState348'), reason: t('lockReason348') };
+  if (T.swVer) return { cls: 'neutral', text: fmt(t('fwStateOther'), { ver: T.swVer }),
+                        reason: fmt(t('lockReasonOther'), { ver: T.swVer }) };
+  return { cls: 'neutral', text: t('fwStateReading'), reason: t('lockReasonReading') };
+}
+function renderFwState() {
+  const host = $('fw-state');
+  if (host) {
+    const v = fwVerdict();
+    host.className = 'verdict' + (v.cls ? ' ' + v.cls : '');
+    host.replaceChildren();
+    const b = document.createElement('b');
+    b.textContent = v.text;
+    host.appendChild(b);
+  }
+  // The reason under the lock card: hidden on 3.4.6 (allowed), shown otherwise.
+  const reason = $('lock-reason');
+  if (reason) {
+    const v = fwVerdict();
+    if (v.reason && !lockUnlockAllowed()) { reason.textContent = v.reason; reason.hidden = false; }
+    else reason.hidden = true;
+  }
+}
+
+// Live telemetry tiles. Every field the Blade Mini shows, filled from the parsed frames; shown in
+// every firmware state (the read-only surface never depends on the gate).
+function tileText(id, val) { const el = $(id); if (el) el.textContent = val; }
 function renderLive() {
-  if ($('t-swver')) $('t-swver').textContent = T.swVer ? ('R' + T.swVer) : '-';
+  renderFwState();
+  const dash = '-';
+  const kmh = S.isUnitMile ? t('unitMph') : t('unitKmh');
+  tileText('t-speed', T.have72 ? (T.speed.toFixed(1) + ' ' + kmh) : dash);
+  tileText('t-batt', T.have52 ? (T.soc + ' %') : dash);
+  // Voltage: prefer the BMS pack voltage (55 52); fall back to the 55 71 config pack voltage.
+  const volt = (T.have52 && T.volt > 0) ? (T.volt.toFixed(1) + ' V')
+             : (S.received71 ? (S.packVolt + ' V') : dash);
+  tileText('t-volt', volt);
+  // Current is hidden when the Blade Mini leaves the smart-BMS field empty (sentinel -1000 A).
+  const curTile = $('tile-cur');
+  if (T.have52 && T.current > -999.9) {
+    tileText('t-cur', T.current.toFixed(1) + ' A');
+    if (curTile) curTile.hidden = false;
+  } else if (curTile) {
+    curTile.hidden = true;
+  }
+  tileText('t-lock', T.lock === 'unlocked' ? t('lockUnlocked')
+                   : T.lock === 'locked' ? t('lockLocked')
+                   : (S.received71 ? t('lockUnknown') : dash));
+  tileText('t-gear', S.received71 ? String(S.gear) : dash);
+  tileText('t-cruise', S.received71 ? cruiseName(S.cruise) : dash);
+  tileText('t-wheel', S.received71 ? (S.wheel.toFixed(1) + ' "') : dash);
+  tileText('t-unit', S.received71 ? kmh : dash);
+  tileText('t-abs', S.received71 ? t(S.abs ? 'onLabel' : 'offLabel') : dash);
+  tileText('t-fw', T.swVer ? ('R' + T.swVer) : dash);
+  tileText('t-serial', (T.fin || deviceName) ? (T.fin || deviceName) : dash);
   refreshSettingsInputs();
   refreshGearInputs();
   refreshToggle();
   refreshInfoButtons();
 }
 function resetTiles() {                                 // no telemetry -> show "-"
-  // Drop cached telemetry so a reconnect can NEVER show a pre-reboot lock state. Without this, T.lock
-  // keeps its last value and refreshToggle shows it until a fresh 55 71 arrives. Cleared to null,
-  // refreshToggle shows "reading..." (unknown) until the next real 55 71 gives the true state.
   T.lock = null;
-  // Battery and fault data belongs to the link that streamed it: after a drop the two info views
-  // show the placeholder again until the new link delivers its own frames.
-  T.have52 = false; T.have53 = false; T.cellMv = null; T.errors = null; T.ecu1 = null; T.ecu2 = null;
+  T.have52 = false; T.have53 = false; T.have72 = false; T.cellMv = null; T.errors = null;
+  T.ecu1 = null; T.ecu2 = null;
   S.received71 = false;
   T.swVer = null; fwWarned = false;   // a reconnect re-reads the version and may warn again
-  if ($('t-swver')) $('t-swver').textContent = '-';
-  refreshToggle();
+  renderLive();
 }
-// Wheel + cruise: editable only once the scooter reported its config (55 71). Prefilled ONCE with
-// the value the scooter delivers; after that the user edits freely (no per-frame overwrite).
+
+// Wheel + cruise: editable only once the scooter reported its config (55 71) on the supported 3.4.6.
+// Prefilled ONCE with the value the scooter delivers; after that the user edits freely.
 let settingsPrefilled = false;
 function refreshSettingsInputs() {
-  if (otaEngine) return;     // a running flash keeps these disabled until it reports finished
-  const ready = settingsAllowed();   // wheel/cruise are settings too: Blade + 3.4.6 only
+  const ready = settingsAllowed();
   const win = $('wheel-in'), cin = $('cruise-in'), bw = $('btn-set-wheel'), bc = $('btn-set-cruise');
-  // Wheel size may only be changed while UNLOCKED (a locked, road-legal scooter keeps an honest
-  // speedometer). Cruise, however, IS the unlock lever on stock firmware, so it stays settable while
-  // locked - that dropdown is how the clamp is lifted. Both need a 55 71 first.
+  // Wheel size may only be changed while unlocked. Cruise stays settable while locked.
   const locked = ready && T.lock === 'locked';
   [win, bw].forEach(el => { if (el) { el.disabled = !ready || locked; el.title = locked ? t('tipWheelLocked') : ''; } });
   [cin, bc].forEach(el => { if (el) { el.disabled = !ready; el.title = ''; } });
@@ -1296,12 +1017,10 @@ function refreshSettingsInputs() {
 
 // --------------------------- error reports + battery info ---------------------------
 //
-// Two read-only views of what the scooter streams by itself. Nothing is sent for either of them:
-// 55 54 carries the BMS severity array, 55 72 t[10]/t[11] the controller fault bits, 55 52 / 55 53
-// the pack summary and 55 51 / 55 55 / 55 56 the per-cell voltages.
+// Two read-only views of what the scooter streams by itself. Nothing is sent for either: 55 54 carries
+// the BMS severity array, 55 72 t[10]/t[11] the controller fault bits, 55 52 / 55 53 the pack summary
+// and 55 51 / 55 55 / 55 56 the per-cell voltages.
 
-// Our wording per BMS error index. Index 16 is deliberately absent: the pack reports it as a status
-// flag rather than a fault, so it is filtered out below.
 const ERROR_NAMES = [
   'errDischargeOverTemp', 'errDischargeUnderTemp', 'errChargeOverTemp', 'errChargeUnderTemp',
   'errCellOverVolt', 'errCellUnderVolt', 'errPackOverVolt', 'errPackUnderVolt',
@@ -1310,13 +1029,11 @@ const ERROR_NAMES = [
 ];
 const ERROR_PACK_FLAG = 16;      // the one index in the array that is a status flag, not a fault
 const INFO_REFRESH_MS = 1000;    // how often an open view redraws from the live frames
-// A cell reads full above 3400 mV and low below 2650 mV; in between it is simply working.
 const CELL_FULL_MV = 3400, CELL_LOW_MV = 2650;
 
 function ecuBit(byte, bit) { return byte != null && ((byte >> bit) & 1) === 1; }
 
-// Active faults only. Over-temperature while discharging or charging counts from level 2, every
-// other type from level 3, which is what keeps a resting low charge level out of the list.
+// Active faults only. Over-temperature counts from level 2, every other type from level 3.
 function collectErrors() {
   const items = [];
   if (Array.isArray(T.errors)) {
@@ -1342,8 +1059,6 @@ function collectErrors() {
   return items;
 }
 
-// A translated one-liner in place of a list, for the states where there is nothing to show yet. The
-// data-t attribute keeps it in step with the language switch.
 function infoNote(key) {
   const p = document.createElement('p');
   p.className = 'hint';
@@ -1351,16 +1066,11 @@ function infoNote(key) {
   p.textContent = t(key);
   return p;
 }
-
-// The same note for the cell grid: a child of a grid container is a grid item, so without the
-// page's full-width utility it would sit in one 5.5rem column.
 function gridNote(key) {
   const p = infoNote(key);
   p.classList.add('span2');
   return p;
 }
-
-// One verdict box per finding: the flasher's box already carries a severity colour on its left edge.
 function errorBox(item) {
   const box = document.createElement('div');
   box.className = 'verdict ' + item.kind;
@@ -1381,16 +1091,14 @@ function renderErrorReports() {
   if (!connected) { host.appendChild(infoNote('infoConnectFirst')); return; }
   const items = collectErrors();
   if (items.length) { items.forEach(item => host.appendChild(errorBox(item))); return; }
-  // A clean bill of health may only be given once BOTH sources have reported: 55 54 for the battery
-  // and 55 72 for the controller. Until then the honest answer is that nothing is known yet.
+  // A clean bill of health only once BOTH sources have reported: 55 54 (battery) and 55 72 (controller).
   const complete = Array.isArray(T.errors) && T.ecu1 !== null;
   host.appendChild(infoNote(complete ? 'errEmpty' : 'infoWaiting'));
 }
 
-// Label plus value, the pair the live card on the page already uses for its firmware rows.
 function batRow(key, value) {
   const row = document.createElement('div');
-  row.className = 'led-row-inline kv';   // the row shape is the page's, only the value type is new
+  row.className = 'led-row-inline kv';
   const label = document.createElement('label');
   label.setAttribute('data-t', key);
   label.textContent = t(key);
@@ -1401,16 +1109,14 @@ function batRow(key, value) {
   return row;
 }
 
-// Every number the pack reports, in the order the app lists them. A frame that has not arrived
-// leaves its rows on the page placeholder rather than on a zero.
+// Every number the pack reports. A frame that has not arrived leaves its rows on the placeholder.
 function batteryRows() {
   const dash = '-';
   const notSent = t('batNotSent');
   const v53 = (val, unit) => T.have53 ? (val + ' ' + unit) : dash;
   const cellV = mv => T.have53 ? ((mv / 1000).toFixed(3) + ' V') : dash;
-  // Der Blade fuellt die Smart-BMS-Felder im 0x52 nicht: leer ergibt 0V / -1000A / -40 Grad.
-  // Solche Sentinel-Werte als "nicht gesendet" ausweisen statt als Falschzahl. Bei echten
-  // (T2-)Packs liegen die Werte ausserhalb der Sentinels und werden normal angezeigt.
+  // The Blade leaves the smart-BMS 55 52 fields empty: 0 V / -1000 A / -40 degC. Show those sentinels
+  // as "not sent", not as a false number. Real (T2) packs land outside the sentinels and show normally.
   const volt = !T.have52 ? dash : (T.volt > 0 ? T.volt.toFixed(1) + ' V' : notSent);
   const curr = !T.have52 ? dash : (T.current > -999.9 ? T.current.toFixed(1) + ' A' : notSent);
   const cTemp = val => !T.have52 ? dash : (val > -40 ? val.toFixed(0) + ' °C' : notSent);
@@ -1436,7 +1142,7 @@ function batteryRows() {
 }
 
 // One tile per cell, coloured by voltage and outlined while the BMS balances it. The balancing
-// bitfield covers the first eight cells only, which is all the frame carries.
+// bitfield covers the first eight cells only.
 function renderBatteryCells(host) {
   host.replaceChildren();
   const cells = T.cellMv;
@@ -1447,7 +1153,7 @@ function renderBatteryCells(host) {
   const count = (T.have53 && T.cellCount > 0) ? Math.min(T.cellCount, CELL_SLOTS) : CELL_SLOTS;
   for (let k = 0; k < count; k++) {
     const mv = cells[k] || 0;
-    if (mv <= 0) continue;     // a slot the pack has not reported is left out, not drawn as 0.000 V
+    if (mv <= 0) continue;
     const tile = document.createElement('div');
     tile.className = 'tile';
     if (mv > CELL_FULL_MV) tile.classList.add('cell-full');
@@ -1480,8 +1186,6 @@ function renderBatteryInfo() {
     cells.replaceChildren(gridNote('infoConnectFirst'));
     return;
   }
-  // The health box is the battery half of the error report, so the two views can never disagree
-  // about what counts as active.
   if (!Array.isArray(T.errors)) {
     health.appendChild(infoNote('infoWaiting'));
   } else {
@@ -1506,16 +1210,13 @@ function renderBatteryInfo() {
   renderBatteryCells(cells);
 }
 
-// Both views need a link that is proven to deliver frames. During a flash no telemetry arrives at
-// all, so the buttons follow the same rule as the other scooter controls.
+// Both views need a link that is proven to deliver frames.
 function refreshInfoButtons() {
-  const ready = connected && linkConfirmed && !flashOwnsLink();
+  const ready = connected && linkConfirmed;
   ['btn-err', 'btn-bat'].forEach(id => { const b = $(id); if (b) b.disabled = !ready; });
 }
 
-// While a view is open it redraws from the live frames; closing it stops that again.
 let errTimer = null, batTimer = null;
-
 function openInfoView(dialogId, render, stop) {
   const dlg = $(dialogId);
   if (!dlg || !dlg.showModal) { log('this browser cannot show the ' + dialogId + ' view'); return; }
@@ -1524,7 +1225,6 @@ function openInfoView(dialogId, render, stop) {
   dlg.showModal();
   return setInterval(render, INFO_REFRESH_MS);
 }
-
 function openErrorReports() { errTimer = openInfoView('err', renderErrorReports, stopErrorReports) || null; }
 function stopErrorReports() { if (errTimer) { clearInterval(errTimer); errTimer = null; } }
 function openBatteryInfo() { batTimer = openInfoView('bat', renderBatteryInfo, stopBatteryInfo) || null; }
@@ -1532,9 +1232,8 @@ function stopBatteryInfo() { if (batTimer) { clearInterval(batTimer); batTimer =
 
 // --------------------------- language ---------------------------
 //
-// Every visible string comes from i18n.js: elements carry data-t="key", the run-time
-// strings are looked up with t(). German is the default, never browser-detected, so the
-// page reads the same on every device until the reader picks EN.
+// Every visible string comes from i18n.js: elements carry data-t="key", the run-time strings are
+// looked up with t(). German is the default, never browser-detected.
 
 let lang = 'de';
 
@@ -1542,50 +1241,22 @@ function table() { return (window.I18N && window.I18N[lang]) || {}; }
 function t(key) { const v = table()[key]; return (typeof v === 'string') ? v : ''; }
 function tList(key) { const v = table()[key]; return Array.isArray(v) ? v : []; }
 function fmt(s, vars) { return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m)); }
-function cruiseName(v) { return [t('cruiseOff'), t('cruiseAuto'), t('cruiseManual')][v]; }
-
-// Flasher phase names come from ota.js, so an unknown one falls back to its raw name.
-function tPhase(p) { return (table().phase || {})[p] || String(p); }
-
-// Result messages come from ota.js too. The two carrying packet numbers are matched by
-// pattern; anything unmapped is shown as the engine worded it.
-function tMessage(m) {
-  const msg = table().msg || {};
-  if (msg[m]) return msg[m];
-  let hit = /^packet (\d+)\/(\d+) failed repeatedly$/.exec(m);
-  if (hit && msg.packetFailed) return fmt(msg.packetFailed, { n: hit[1], m: hit[2] });
-  hit = /^packet (\d+)\/(\d+) got no response\./.exec(m);
-  if (hit && msg.packetNoAnswer) return fmt(msg.packetNoAnswer, { n: hit[1], m: hit[2] });
-  return String(m);
-}
-
-function renderList(hostId, key) {
-  const host = $(hostId);
-  if (!host) return;
-  host.textContent = '';
-  tList(key).forEach(item => {
-    const li = document.createElement('li');
-    li.innerHTML = item;   // scan-ok: our own translation table, the only markup is <b>
-    host.appendChild(li);
-  });
-}
+function cruiseName(v) { return [t('cruiseOff'), t('cruiseAuto'), t('cruiseManual')][v] || t('cruiseOff'); }
 
 function applyLang() {
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-t]').forEach(n => {
     const v = t(n.getAttribute('data-t'));
-    // Only strings with emphasis, a link or an escaped character go in as markup.
-    if (/[<&]/.test(v)) n.innerHTML = v; else n.textContent = v;   // scan-ok: our own translation table
+    if (/[<&]/.test(v)) n.innerHTML = v; else n.textContent = v;   // scan-ok: our own translation table, only <b>/<a>/<code>
   });
-  renderList('dlg-list', 'dlgPoints');
+  // Advanced grid gear labels carry a number, so they are formatted rather than plain data-t.
+  [1, 2, 3].forEach(n => { const el = $('gear-lbl-' + n); if (el) el.textContent = fmt(t('gearLabel'), { n: n }); });
   { const el = $('wheel-in'); if (el) el.placeholder = t('phWheel'); }
-  // href is only the fallback for opening in a new tab; the click opens the viewer.
   { const el = $('link-guide'); if (el) el.href = docFile('GUIDE'); }
   { const el = $('link-readme'); if (el) el.href = docFile('README'); }
   { const el = $('link-privacy'); if (el) el.href = docFile('PRIVACY'); }
   { const el = $('link-license'); if (el) el.href = docFile('LICENSE'); }
   { const el = $('link-trademarks'); if (el) el.href = docFile('TRADEMARKS'); }
-
   { const el = $('langs'); if (el) el.setAttribute('aria-label', t('langGroup')); }
   { const dark = document.documentElement.getAttribute('data-theme') !== 'light';
     const el = $('btn-theme');
@@ -1594,17 +1265,11 @@ function applyLang() {
   document.querySelectorAll('#langs button').forEach(b => {
     b.setAttribute('aria-pressed', String(b.dataset.lang === lang));
   });
-  // Everything drawn from state has to be redrawn in the new language.
-  renderFwVerdict();
-  renderDlgFile();
-  if (fwResult) renderFwResult(); else renderFwProgress();
   { const el = $('status'); setStatus(el ? el.dataset.state : 'disconnected'); }
   renderLive();
 }
 
 // --------------------------- theme ---------------------------
-// Dark is the default. The choice is remembered. The icon shows what a tap would DO: a sun
-// while the page is dark, a moon while it is light.
 
 const LS_THEME = 'tru_theme';
 
@@ -1616,7 +1281,6 @@ function applyTheme(dark) {
     b.setAttribute('aria-label', t(dark ? 'themeToLight' : 'themeToDark'));
     b.title = b.getAttribute('aria-label');
   }
-  // Guarded like every other stored preference here: a browser in private mode throws on write.
   try { localStorage.setItem(LS_THEME, dark ? 'dark' : 'light'); } catch (e) {}
 }
 
@@ -1637,9 +1301,8 @@ function initLangSwitch() {
 }
 
 // --------------------------- document viewer ---------------------------
-// The guide, the disclaimer, the licence, the privacy notice and the trademarks
-// are files of this site. They open here, so a reader is never handed a raw
-// markdown file or sent off to a code host.
+// The guide, disclaimer, licence, privacy notice and trademarks are files of this site. They open
+// here, so a reader is never handed a raw markdown file or sent off to a code host.
 
 const DOC_TITLES = {
   'GUIDE.de.md': 'footGuide', 'GUIDE.en.md': 'footGuide',
@@ -1653,36 +1316,27 @@ const DISCLAIMER_HREF = 'README.md#disclaimer';
 
 const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// GitHub's heading slugs, so an anchor written inside a document keeps working here.
-// One space becomes one dash, runs are NOT collapsed: a code host drops the punctuation
-// first, so "Disclaimer & Trademarks" ends up with two dashes and an anchor written for
-// that host has to find the same id here.
 const slug = s => s.toLowerCase().trim()
   .replace(/[^\w\sÀ-ɏ-]/g, '')
   .replace(/ /g, '-');
 
-// Only the markdown these documents use: headings, lists with one level of
-// nesting, tables, fenced code, quotes, rules, bold, inline code and links.
-// Indented content stays inside its list item, so the numbering of the steps
-// after it keeps counting.
+// Only the markdown these documents use: headings, lists with one level of nesting, tables, fenced
+// code, quotes, rules, bold, inline code and links.
 function mdToHtml(src) {
   const inline = s => escHtml(s)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (all, text, href) => {
-      // The disclaimer link reads well on a code host and opens our own terms here.
       if (href === DISCLAIMER_HREF) return `<a href="${href}" data-disclaimer>${text}</a>`;
       if (DOC_TITLES[href]) return `<a href="${href}" data-docfile="${href}">${text}</a>`;
-      // An anchor belongs to the document being read, so it scrolls instead of opening a
-      // tab on an address that answers to nothing.
       if (href.startsWith('#')) return `<a href="${href}" data-anchor="${href.slice(1)}">${text}</a>`;
       return `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
     });
 
   const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
   const out = [];
-  let listKind = null;   // the open top-level list, 'ul' or 'ol'
-  let li = null;         // { parts: [], nested: bool } of the open list item
+  let listKind = null;
+  let li = null;
   let para = [];
   let inFence = false;
 
@@ -1718,15 +1372,12 @@ function mdToHtml(src) {
       inFence = true;
       continue;
     }
-    // A blank line inside a list item only ends its paragraph: the item goes on
-    // as long as the next line is indented.
     if (body === '') {
       if (li && /^ {2,}\S/.test(lines[i + 1] || '')) flushPara(); else block();
       continue;
     }
     if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(body)) { block(); out.push('<hr>'); continue; }
 
-    // A header row followed by a divider row starts a table.
     if (body.startsWith('|') && /^\|[\s:|-]+\|?\s*$/.test((lines[i + 1] || '').trim())) {
       if (li) { flushPara(); closeNested(); } else block();
       sink().push('<div class="doc-table"><table><thead><tr>'
@@ -1751,7 +1402,6 @@ function mdToHtml(src) {
       sink().push('<blockquote>' + inline(m[1]) + '</blockquote>');
       continue;
     }
-    // An indented bullet is a sub-list of the open item.
     if (indented && li && (m = body.match(/^[-*]\s+(.*)$/))) {
       flushPara();
       if (!li.nested) { li.parts.push('<ul class="nested">'); li.nested = true; }
@@ -1766,7 +1416,6 @@ function mdToHtml(src) {
       openList('ol'); li = { parts: [inline(m[1])], nested: false };
       continue;
     }
-    // Indented prose belongs to the open item; anything else is a new paragraph.
     if (li && !indented) closeList();
     if (li) closeNested();
     para.push(body);
@@ -1778,8 +1427,6 @@ function mdToHtml(src) {
 
 const docCache = {};
 
-// Every document exists in German as well. English keeps the plain name, because
-// LICENSE.md is the file GitHub reads and the binding wording of the licence.
 const docFile = name => {
   if (name === 'GUIDE') return `GUIDE.${lang}.md`;
   if (name === 'README') return 'README.md';   // only exists in English
@@ -1791,17 +1438,12 @@ function openDoc(name, anchor, titleKey) { openDocFile(docFile(name), anchor, ti
 function openDocFile(file, anchor, titleKey) {
   const dlg = $('doc'), body = $('doc-body');
   if (!dlg || !body) return;
-  // A document in the other language is labelled as such, so nobody wonders why
-  // the licence suddenly reads English.
   const mark = (lang === 'de' && !file.includes('.de.')) ? ' ' + t('docEnglish') : '';
-  // The link label carries the loading state; the document's own heading takes over
-  // as soon as it is rendered.
   $('doc-title').textContent = (t(titleKey || DOC_TITLES[file] || '') || file) + mark;
   if (typeof dlg.showModal === 'function') dlg.showModal();
 
   const show = html => {
     body.innerHTML = html;   // scan-ok: markdown of our own documents, rendered by mdToHtml which escapes first
-    // The heading becomes the window title instead of standing twice on screen.
     const h1 = body.querySelector('h1');
     if (h1) { $('doc-title').textContent = h1.textContent.trim() + mark; h1.remove(); }
     body.scrollTop = 0;
@@ -1812,8 +1454,6 @@ function openDocFile(file, anchor, titleKey) {
 
   if (docCache[file]) { show(docCache[file]); return; }
   body.innerHTML = '<p>' + escHtml(t('docLoading')) + '</p>';   // scan-ok: escaped
-  // Same marker the script tags carry: without it a document stays in the browser cache
-  // across builds and a reader keeps seeing the text from the first time they opened it.
   fetch(file + '?v=' + BUILD)
     .then(r => { if (!r.ok) throw new Error(r.status + ' ' + r.statusText); return r.text(); })
     .then(txt => { docCache[file] = mdToHtml(txt); show(docCache[file]); })
@@ -1823,8 +1463,7 @@ function openDocFile(file, anchor, titleKey) {
     });
 }
 
-// The footer disclaimer shows the same points as the warning before a flash, but
-// without a confirm button: reading the terms must never start a flash.
+// The footer disclaimer shows the same points as the intro warning, without a confirm button.
 function openDisclaimer() {
   const dlg = $('doc'), body = $('doc-body');
   if (!dlg || !body) return;
@@ -1837,7 +1476,6 @@ function openDisclaimer() {
 }
 
 function wireDocViewer() {
-  // Delegated: the guide link inside a translated hint is rebuilt on every switch.
   document.addEventListener('click', e => {
     if (!e.target.closest) return;
     const jump = e.target.closest('[data-anchor]');
@@ -1865,46 +1503,61 @@ function wireDocViewer() {
   });
 }
 
+// --------------------------- wiring ---------------------------
+
 window.addEventListener('DOMContentLoaded', () => {
   log('tr-unlock build ' + BUILD);   // so a tester's log shows which deployed version they run
   initLangSwitch();
   initTheme();                       // before applyLang, so the first label is in the right language
   wireDocViewer();
   applyLang();                       // fills every data-t element, German first
+
   $('btn-conn').addEventListener('click', () => {
     if ($('btn-conn').dataset.act === 'disconnect') disconnectBle(); else pickAndConnect();
   });
   $('btn-toggle').addEventListener('click', () => {
     if ($('btn-toggle').dataset.action === 'unlock') unlock(); else lock();
   });
+  $('btn-set-wheel').addEventListener('click', () => { const el = $('wheel-in'); const v = el ? parseFloat(el.value) : NaN; if (!isNaN(v)) setWheel(v); });
+  $('btn-set-cruise').addEventListener('click', () => { const el = $('cruise-in'); if (el) setCruise(parseInt(el.value, 10) || 0); });
+
+  // Basic speed fields: a quick "set all gears" shortcut that writes through to the per-gear grid.
+  { const so = $('speed-open');
+    if (so) so.addEventListener('change', () => {
+      const v = parseInt(so.value, 10);
+      if (!isNaN(v)) [1, 2, 3].forEach(n => { const el = $('g' + n + '-in'); if (el) el.value = String(Math.min(Math.max(v, 1), 100)); });
+    }); }
+  { const sl = $('speed-legal');
+    if (sl) sl.addEventListener('change', () => {
+      const v = parseInt(sl.value, 10);
+      if (!isNaN(v)) { [1, 2, 3].forEach(n => { const el = $('g' + n + '-lock'); if (el) el.value = String(clampLock(v)); }); persistLocks(); }
+    }); }
+
   // Per-gear lock speeds: prefill from the saved triple, remember every change.
   { const a = savedLocks();
     [1, 2, 3].forEach(n => { const el = $('g' + n + '-lock'); if (el) {
         if (a) el.value = String(a[n - 1]);
         el.addEventListener('change', persistLocks);
     } }); }
-  // Error reports and battery info. Esc closes a dialog too, so the refresh is stopped from the
-  // close event rather than from the buttons.
+
+  // Error reports and battery info.
   $('btn-err').addEventListener('click', openErrorReports);
   $('btn-bat').addEventListener('click', openBatteryInfo);
-  ['err-close', 'err-close-2'].forEach(id => {
-    $(id).addEventListener('click', () => { const d = $('err'); if (d) d.close(); });
-  });
-  ['bat-close', 'bat-close-2'].forEach(id => {
-    $(id).addEventListener('click', () => { const d = $('bat'); if (d) d.close(); });
-  });
-  ['fwwarn-close', 'fwwarn-close-2'].forEach(id => {
-    const el = $(id); if (el) el.addEventListener('click', () => { const d = $('fwwarn'); if (d) d.close(); });
-  });
+  ['err-close', 'err-close-2'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', () => { const d = $('err'); if (d) d.close(); }); });
+  ['bat-close', 'bat-close-2'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', () => { const d = $('bat'); if (d) d.close(); }); });
+  ['fwwarn-close', 'fwwarn-close-2'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', () => { const d = $('fwwarn'); if (d) d.close(); }); });
   $('err').addEventListener('close', stopErrorReports);
   $('bat').addEventListener('close', stopBatteryInfo);
 
-  // Firmware flashing is removed on the Blade build (the Blade cannot be flashed this way). The OTA
-  // internals in this file stay inert (otaEngine is always null), so the link/queue guards keep working.
+  // Log controls + toggles.
+  $('btn-copy-log').addEventListener('click', copyLog);
+  $('btn-clear-log').addEventListener('click', clearLog);
+  $('btn-save-log').addEventListener('click', saveLog);
+  { const pl = $('public-log'); if (pl) pl.addEventListener('change', () => { publicLog = pl.checked; renderLog(); }); }
+  { const dl = $('diag-log'); if (dl) dl.addEventListener('change', () => { diagLog = dl.checked; }); }
 
   refreshInfoButtons();      // start disabled; both views need a link that delivers frames
-  if (!navigator.bluetooth) log('Web Bluetooth not available. On iOS use the Bluefy browser.');
-  // Someone arriving at .../#disclaimer meant the terms, an address written in the documents.
+  if (!navigator.bluetooth) log('Web Bluetooth not available. On iOS use the Bluefy browser.', 'log-err');
   if (location.hash.replace('#', '').toLowerCase().startsWith('disclaimer')) openDisclaimer();
   parseDeepLink();                              // read ?do=lock|unlock from a home-screen shortcut
   if (pendingDeepAction) tryAutoReconnect();    // only a shortcut auto-reconnects; a normal open uses the chooser

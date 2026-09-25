@@ -7,6 +7,7 @@
   --muted: #8A93A8; --accent: #B8F020; --value: #BCEB39; --good: #1EE89A; --bad: #FF5050;
   --warn: #FFAA18; --gps: #3DB8FF; --mono: ui-monospace, Consolas, monospace;
   --scroll: #2B3350; --field: #0d1018; --chip: #171b2a; --on-accent: #0A0C10;
+  --tx: #6cb6ff; --rx: #e0b25a;   /* log line colours: outgoing / incoming */
   color-scheme: dark;   /* native controls, scrollbars and the colour well follow the theme */
   /* Tinted boxes and their emphasis text. The 8-digit values are one hue at 8 % and 25 % opacity,
      which is why they carry through both themes without a second set. */
@@ -23,6 +24,7 @@
   --accent: #2A6A00; --value: #2A6A00; --good: #1B7A4B; --bad: #CC2020;
   --warn: #A05800; --gps: #005AA0;
   --scroll: #B6C0D4; --field: #FFFFFF; --chip: #F1F4FA; --on-accent: #FFFFFF;
+  --tx: #0b6bcb; --rx: #8a5a00;
   color-scheme: light;
   /* The tinted boxes keep their hue; only the emphasis text darkens enough to read on white. */
   --warn-strong: #7A4300; --bad-strong: #A01818;
@@ -121,6 +123,34 @@ label { color: var(--label); font-size: 12px; text-transform: uppercase; letter-
 pre#log { margin: 0; background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 10px;
   font-family: var(--mono); font-size: 11.5px; color: var(--muted); max-height: 150px; overflow: auto;
   white-space: pre-wrap; overscroll-behavior: contain; }
+/* Log line colours + option toggles (timestamped TX/RX transcript, like lb-tool-web). */
+.log-tx { color: var(--tx); }
+.log-rx { color: var(--rx); }
+.log-ok { color: var(--good); }
+.log-err { color: var(--bad); }
+.log-opts { display: flex; flex-direction: column; gap: 6px; }
+.log-opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0;
+  color: var(--label); font-size: 12px; text-transform: none; letter-spacing: 0; cursor: pointer; }
+.log-opt input[type="checkbox"] { flex: 0 0 auto; -webkit-appearance: checkbox; appearance: auto;
+  width: 16px; height: 16px; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+
+/* Collapsible settings sections (details/summary), matching the standard tool skin. */
+details.card { gap: 0; }
+details.card > summary { list-style: none; cursor: pointer; display: flex; align-items: center;
+  justify-content: space-between; gap: 8px; }
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary h2 { flex: 1 1 auto; }
+details.card > summary .chev { flex: 0 0 auto; color: var(--muted); font-size: 12px; transition: transform .15s; }
+details.card[open] > summary .chev { transform: rotate(90deg); }
+details.card[open] > summary { margin-bottom: 12px; }
+details.card > .sect-body { display: flex; flex-direction: column; gap: 12px; }
+
+/* Two speed inputs side by side in the lock card. */
+.speed-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.speed-cols .set-row { grid-template-columns: 1fr; }
+
+/* Neutral (grey) verdict for the read-only / reading firmware states. */
+.verdict.neutral { border-left-color: var(--muted); }
 /* Links on one line, the build stamp centred on the line beneath. The links may still wrap on a
    very narrow phone rather than run off the edge. */
 .foot { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0 2px; }
@@ -141,10 +171,7 @@ code { font-family: var(--mono); font-size: 12px; background: var(--field); bord
   -webkit-user-select: all; user-select: all; }
 .foot .ver { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
-/* firmware flasher */
-.bar { height: 8px; border-radius: 999px; background: var(--chip); border: 1px solid var(--line);
-  overflow: hidden; margin: 10px 0 6px; }
-.bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+/* Verdict box: reused by the firmware indicator, the error report and the battery health line. */
 .verdict { border: 1px solid var(--line); border-left: 3px solid var(--good); background: var(--field);
   border-radius: 8px; padding: 9px 11px; margin-top: 10px; font-size: 13px; color: var(--label); }
 .verdict.bad { border-left-color: var(--bad); }
@@ -169,10 +196,6 @@ dialog::backdrop { background: var(--backdrop); }
 .dlg-body li { margin-bottom: 6px; }
 .dlg-body li b { color: var(--text); }
 .dlg-body li:last-child { margin-bottom: 0; }
-/* The tick box that arms the flash button. */
-.consent-row { display: flex; align-items: flex-start; gap: 8px; margin: 0;
-  color: var(--text); font-size: 13px; line-height: 1.5; cursor: pointer; }
-.consent-row input { margin-top: 2px; flex: 0 0 auto; }
 .dlg-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 0 16px 16px; }
 /* The body already ends with its own padding, so the foot only needs the side and bottom edges. */
 .dlg-body + .dlg-foot { padding-top: 0; }
@@ -186,16 +209,16 @@ dialog::backdrop { background: var(--backdrop); }
 /* Document viewer. Only the open dialog is a flex column: a display value on the
    closed one would beat the browser's display:none and drop it into the page. */
 /* Every scrolling dialog shares one shell; only the width differs. */
-#doc, #led, #err, #bat { max-height: 88vh; overflow: hidden; }
+#doc, #err, #bat { max-height: 88vh; overflow: hidden; }
 #doc { max-width: 44rem; }
-#led, #err, #bat { max-width: 30rem; }
-#doc[open], #led[open], #err[open], #bat[open] { display: flex; flex-direction: column; }
+#err, #bat { max-width: 30rem; }
+#doc[open], #err[open], #bat[open] { display: flex; flex-direction: column; }
 .doc-head { display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .doc-head h3 { margin: 0; font-size: 15px; color: var(--text); }
-#doc-x, #led-close, #err-close, #bat-close, #fwwarn-close { flex: 0 0 auto; background: none; border: 0;
+#doc-x, #err-close, #bat-close, #fwwarn-close { flex: 0 0 auto; background: none; border: 0;
   color: var(--label); font-size: 22px; line-height: 1; padding: 0 4px; }
-#doc-x:hover, #led-close:hover, #err-close:hover, #bat-close:hover, #fwwarn-close:hover { color: var(--accent); }
+#doc-x:hover, #err-close:hover, #bat-close:hover, #fwwarn-close:hover { color: var(--accent); }
 .doc-body { padding: 14px 16px; overflow-y: auto; overscroll-behavior: contain;
   color: var(--label); font-size: 13.5px; }
 .doc-body > :first-child { margin-top: 0; }
@@ -210,11 +233,6 @@ dialog::backdrop { background: var(--backdrop); }
 .doc-body ul.nested li { margin-bottom: 3px; }
 .doc-body a { color: var(--accent); }
 .dlg-body a { color: var(--accent); }
-/* Deprecation banner: red tone, always visible, cannot be collapsed. */
-.sunset-banner { background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px;
-  padding: 11px 14px; font-size: 12px; line-height: 1.5; color: var(--text); }
-.sunset-banner b { color: var(--bad-strong); }
-.sunset-banner a { color: var(--bad-strong); text-decoration: underline; }
 .doc-body code { font-family: var(--mono); font-size: .88em; background: var(--field);
   border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
 .doc-body pre { background: var(--field); border: 1px solid var(--line); border-radius: 8px;
@@ -232,90 +250,11 @@ dialog::backdrop { background: var(--backdrop); }
   border-top: 1px solid var(--line); }
 .doc-foot button { flex: 0 0 auto; padding: 10px 22px; }
 
-/* LED dialog. Shell and close button come from the document viewer above; the body is the only
-   part that differs, because it is the one that can outgrow the screen. Scrollbars need nothing
-   here: the page styles them globally on * near the top of this file. */
-#led .dlg-body, #err .dlg-body, #bat .dlg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto;
+/* Scrolling dialogs (error report / battery info) keep their body inside the shell. */
+#err .dlg-body, #bat .dlg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto;
   overscroll-behavior: contain; }
-/* One setting per row: the label above, the control across the full width beneath it. The base
-   input rule pads every field by 10px, which is right for a text box and wrong for a slider or a
-   colour well, so those two reset it and set their own height. */
-.led-row { display: flex; flex-direction: column; gap: 6px; }
-/* Both controls sit at 32 px so they read as one set. The base input rule is built for the wide
-   fields on the page (10 px padding at 15 px type, about 42 px tall) and towers over a dialog whose
-   labels are 13 px. */
-/* flex: 0 0 auto is the load-bearing part. The base rule gives every field flex: 1 1 90px. In
-   this COLUMN the main axis is vertical, so that basis of 90 px plus grow decides the height and
-   beats any height given here. */
-/* The effect list is built from page elements rather than a <select>, because the drop-down of a
-   native select is drawn by the operating system and its scrollbar cannot be styled. This one is an
-   ordinary scroll container, so the global scrollbar rule at the top of this file covers it. */
-.picker { position: relative; }
-.picker-btn { width: 100%; height: 32px; padding: 0 10px; font-size: 13px; text-align: left;
-  background: var(--field); color: var(--text); border: 1px solid var(--line); border-radius: 10px; }
-.picker-btn::after { content: "▾"; float: right; color: var(--muted); }
-/* Fixed, not absolute. The dialog body is a scroll container. An absolutely positioned list
-   inside one gets clipped by it and stretches its scroll range, so the modal grew a second scrollbar
-   the rider had to work through before reaching the list. Fixed takes it out of that box entirely.
-   Left, top and width are written by the script from the button position. */
-.picker-list { position: fixed; z-index: 60;
-  max-height: 220px; overflow-y: auto; background: var(--field); border: 1px solid var(--line);
-  border-radius: 0 0 10px 10px; padding: 4px; box-shadow: 0 8px 24px var(--shadow);
-  /* The scrollbar takes its space from the padding, so the rows keep the width of the field. */
-  scrollbar-gutter: stable;
-  /* Once the list hits its top or bottom the browser hands the wheel to whatever is behind it and
-     the page moves instead. contain keeps the wheel inside the list. */
-  overscroll-behavior: contain; }
-/* Opened upwards the joined edge is the bottom one. */
-.picker-list.up { border-radius: 10px 10px 0 0; }
-.picker-list button { display: block; width: 100%; text-align: left; background: none; border: 0;
-  border-radius: 6px; padding: 7px 8px; font-size: 13px; color: var(--label); }
-.picker-list button:hover { background: var(--line); color: var(--text); }
-.picker-list button[aria-selected="true"] { color: var(--accent); }
-
-.led-row > select, .led-row > input[type=color] {
-  flex: 0 0 auto; width: 100%; height: 32px; box-sizing: border-box;
-}
-.led-row > select { padding: 0 10px; font-size: 13px; }
-.led-row > input[type=color] { padding: 3px; }
-
-/* The value stays beside the slider and the slider takes everything left over, so the bar really
-   ends where the number begins. */
-.led-slider { display: flex; align-items: center; gap: 12px; }
-.led-slider > input[type=range] {
-  flex: 1 1 auto; min-width: 0; margin: 0; padding: 0; height: 22px; box-sizing: border-box;
-  background: transparent; border: 0; -webkit-appearance: none; appearance: none;
-}
-/* The track is drawn by hand. A native range fills only up to the CENTRE of its thumb, so at the
-   maximum a thumb-width of track stays empty and the bar looks unfinished at 100 %. The gradient is
-   driven by --pct, which the script sets from the value. */
-.led-slider input[type=range]::-webkit-slider-runnable-track {
-  height: 6px; border-radius: 3px;
-  background: linear-gradient(to right, var(--accent) 0 var(--pct, 100%), var(--line) var(--pct, 100%) 100%);
-}
-.led-slider input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; border: 0;
-  width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: var(--accent);
-}
-.led-slider input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line); }
-.led-slider input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--accent); }
-.led-slider input[type=range]::-moz-range-thumb {
-  width: 18px; height: 18px; border: 0; border-radius: 50%; background: var(--accent);
-}
-#led-bright-val { flex: 0 0 auto; width: 3.4rem; text-align: right;
-  color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-
-/* A left/right switch rather than a tick box: this turns something on, it does not confirm a term. */
+/* One label/value pair per line: reused by the battery-info pack rows. */
 .led-row-inline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.switch { position: relative; flex: 0 0 auto; width: 44px; height: 26px; }
-.switch > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0;
-  opacity: 0; cursor: pointer; z-index: 1; }
-.switch > span { position: absolute; inset: 0; border-radius: 999px; background: var(--line);
-  transition: background .15s; pointer-events: none; }
-.switch > span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
-  border-radius: 50%; background: var(--text); transition: transform .15s; }
-.switch > input:checked + span { background: var(--accent); }
-.switch > input:checked + span::after { transform: translateX(18px); background: var(--on-accent); }
 
 /* Battery info. One label/value pair per line. The column and the row both reuse shapes the page
    already has, so only the value type is new here. */
