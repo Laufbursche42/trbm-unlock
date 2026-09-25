@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v115';
+const BUILD = 'v116';
 
 // --------------------------- BLE transport constants ---------------------------
 
