@@ -14,7 +14,6 @@ window.I18N = {
     themeToLight: "Auf helle Darstellung umschalten",
     themeToDark: "Auf dunkle Darstellung umschalten",
     sub: "Teverun Blade / Blade Mini (eKFV) live über Web Bluetooth. Läuft in Bluefy (iOS) oder Chrome (Android/Desktop).",
-    movedHint: "Hinweis: Dieses Werkzeug wandert nach <a href=\"https://lb-tool-web.pages.dev/\" target=\"_blank\" rel=\"noopener\">lb-tool-web.pages.dev</a>, das mehrere Roller unter einem Dach bündelt.",
 
     s1Title: "So fängst du an",
     startHintGuide: "Neu hier? In der <a href=\"GUIDE.de.md\" data-doc=\"GUIDE\" data-t=\"footGuide\">Anleitung</a> steht jeder Schritt.",
@@ -178,6 +177,7 @@ window.I18N = {
     footTrademarks: "Marken",
     buildLabel: "Build",
     docClose: "Schließen",
+    sunsetBannerHtml: "<b>Dieses Tool zieht um.</b> Dieses Repo wird <b>nicht mehr weiterentwickelt</b> - bitte wechsle zum neuen Tool: <a href=\"https://lb-tool-web.pages.dev/\" target=\"_blank\" rel=\"noopener\">lb-tool-web.pages.dev</a>. Probleme beim Wechsel? Öffne ein <a href=\"https://github.com/Laufbursche42/Laufbursche42/issues/new\" target=\"_blank\" rel=\"noopener\">Issue auf GitHub</a> oder schick eine <a href=\"https://www.escooter-stammtisch.de/index.php?user/6497-laufbursche/\" target=\"_blank\" rel=\"noopener\">PN im eScooter-Stammtisch</a>.",
     docLoading: "wird geladen …",
     docFail: "Das Dokument konnte nicht geladen werden.",
     docEnglish: "(englisch)",
@@ -200,7 +200,6 @@ window.I18N = {
     themeToLight: "Switch to the light theme",
     themeToDark: "Switch to the dark theme",
     sub: "Teverun Blade / Blade Mini (eKFV) live over Web Bluetooth. Works in Bluefy (iOS) or Chrome (Android/desktop).",
-    movedHint: "Note: this tool is moving to <a href=\"https://lb-tool-web.pages.dev/\" target=\"_blank\" rel=\"noopener\">lb-tool-web.pages.dev</a>, which brings several scooters under one roof.",
 
     s1Title: "How to start",
     startHintGuide: "New here? Every step is in the <a href=\"GUIDE.en.md\" data-doc=\"GUIDE\" data-t=\"footGuide\">guide</a>.",
@@ -364,6 +363,7 @@ window.I18N = {
     footTrademarks: "Trademarks",
     buildLabel: "build",
     docClose: "Close",
+    sunsetBannerHtml: "<b>This tool is moving.</b> This repository is <b>no longer maintained</b> - please switch to the new tool: <a href=\"https://lb-tool-web.pages.dev/\" target=\"_blank\" rel=\"noopener\">lb-tool-web.pages.dev</a>. Trouble switching? Open an <a href=\"https://github.com/Laufbursche42/Laufbursche42/issues/new\" target=\"_blank\" rel=\"noopener\">issue on GitHub</a> or send a <a href=\"https://www.escooter-stammtisch.de/index.php?user/6497-laufbursche/\" target=\"_blank\" rel=\"noopener\">PM on the eScooter-Stammtisch forum</a>.",
     docLoading: "loading …",
     docFail: "The document could not be loaded.",
     docEnglish: "(English)",
