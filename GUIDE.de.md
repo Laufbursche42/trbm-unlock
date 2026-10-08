@@ -2,6 +2,8 @@
 
 > **Machbarkeitsstudie.** Dieses Werkzeug zeigt, was das Bluetooth-Protokoll eines Teverun-Rollers technisch möglich macht, es ist kein fertiges Produkt. Fehlerfreier Betrieb wird nicht versprochen, es gibt keinerlei Gewährleistung. Was du hier tust, tust du auf eigenes Risiko.
 
+> **Wichtig für Fehler-Reports:** Schalte unten auf der Seite den **Diagnose-Log** ein, *bevor* du dich mit dem Scooter verbindest. Nur dann wird der komplette Verbindungsaufbau mitgeschnitten - und genau diese Zeilen brauchen wir in einem [Ticket](https://github.com/Laufbursche42/Laufbursche42/issues), um ein Problem nachzuvollziehen.
+
 ## 1. Was du brauchst
 
 Alles passiert im Browser über Web Bluetooth: verbinden, entsperren, sperren, Fehler und Batterie auslesen. Es gibt nichts zu installieren. Gebraucht wird nur:

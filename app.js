@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v116';
+const BUILD = 'v117';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -115,7 +115,7 @@ const S = {
   gear: 1, wheel: 8.5, sysProTemp: 80, motorPolePairs: 15,
   assistSpeedLimit: 25, speedLimit: 25, fCurrent: 0, rCurrent: 0, packVolt: 60,
   enfEcon: false, isUnitMile: false, atMode: false, isSmart: false,
-  cruise: 0, abs: false, startMode: false,
+  cruise: 0, abs: false, startMode: false, reverseGear: false,
   fStartLevel: 0, rStartLevel: 0, eabsLevel: 0, sleepTime: 0, prTime: 0,
   rmStatus: 1, doubleMotor: 1,
   systemStatus6: 0,
@@ -149,6 +149,7 @@ function updateFrom71(t) {
   S.isUnitMile = (sys & 0x02) !== 0;
   S.atMode = (sys & 0x04) !== 0;
   S.isSmart = (sys & 0x10) !== 0;
+  S.reverseGear = ((sys >> 5) & 1) !== 0;   // reverse gear flag, 55 71 t[17].5 (read-only)
   S.systemStatus6 = (sys >> 6) & 1;   // ESC eKFV-clamp bit (1 = clamped/22, 0 = open); read-only diagnostic
   const sp = t[18] & 0xFF;
   S.sleepTime = sp & 0x07;
@@ -187,6 +188,30 @@ function buildSettingFrame(n, gearByte, eabsLevel, fStartLevel, rStartLevel, per
   return finalizeFrame(a);
 }
 
+// --------------------------- protocol self-test (load-time) ---------------------------
+//
+// The frame builders must reproduce a known-good vector AND every built frame must re-satisfy the
+// CRC-8 the receiver validates. Both are real relations, not a tautology.
+//   known-vector: connectCode(0) reproduces the native app's documented 0x01 connect / keep-alive
+//                 handshake AA 01 10 00 FF..FF <crc8>. The 19 header/payload bytes are the fixed
+//                 handshake bytes; the 20th is the CRC-8, proven by the round-trip below, not hand-written.
+//   round-trip:   crc8 over bytes [0..18] equals the trailing byte - the exact check onNotify runs to
+//                 accept a frame (crc8(t,19) === t[19]), here on the 0x01 connect + 0x18 settings builders.
+const FRAME_OK = (function () {
+  const crcOk = f => (f[19] & 0xFF) === crc8(f, 19);              // the receiver's own CRC-8 validator relation
+  // Documented 0x01 handshake: AA 01 10 <e=0> then 0xFF fill (trailing byte is the CRC checked by crcOk).
+  const HANDSHAKE19 = [0xAA, 0x01, 0x10, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                       0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+  const cc = connectCode(0);
+  let vector = (cc.length === 20);
+  for (let i = 0; i < 19; i++) if ((cc[i] & 0xFF) !== HANDSHAKE19[i]) vector = false;
+  // Round-trip the main 0x18 settings builder (a locked gear-2 frame) through the same CRC validator.
+  const set = buildSettingFrame(2, 2, 2, 5, 5, 22, 20, 20);
+  return vector && crcOk(cc)
+      && set.length === 20 && set[0] === 0xAA && set[1] === 0x18 && crcOk(set);
+})();
+if (!FRAME_OK) { try { console.error('trbm-unlock protocol self-test FAILED'); } catch (e) {} }
+
 // Wheel + cruise are global in the firmware, so ONE 0x18 write for the active gear sets them for
 // every gear. Writing all gears in a burst could starve the display link and trip a false boot-lock.
 function writeWheelCruiseAllGears() {
@@ -210,9 +235,12 @@ const T = {
   mCurF: 0, mCurR: 0, mTempF: 0, mTempR: 0,
   // Controller status bytes 55 72 t[10] / t[11]: the fault bits behind the error report.
   ecu1: null, ecu2: null,
+  // Ride stats from 55 73 (have73 = frame seen at all, so a view shows a placeholder instead of 0).
+  have73: false, avgSpeed: 0, maxSpeed: 0, trip: 0, odo: 0, battLock: false, gpsLock: false,
 };
 
 function u16(t, i) { return ((t[i] & 0xFF) << 8) | (t[i + 1] & 0xFF); }
+function u24(t, i) { return ((t[i] & 0xFF) << 16) | ((t[i + 1] & 0xFF) << 8) | (t[i + 2] & 0xFF); }
 
 // Frame reassembly: a BLE notification is not guaranteed to carry exactly one 20-byte frame (it can
 // be fragmented or batched), so we buffer the bytes and pull out every 20-byte frame that starts
@@ -312,6 +340,16 @@ function dispatch(t) {
       T.have72 = true;
       break;
     }
+    case 0x73:
+      // Ride stats. avg/max speed + trip are u16 * 0.1; odometer is a u24 (big-endian) in km.
+      T.avgSpeed = u16(t, 2) * 0.1;      // 55 73 t[2..3] * 0.1, km/h
+      T.maxSpeed = u16(t, 4) * 0.1;      // 55 73 t[4..5] * 0.1, km/h
+      T.trip = u16(t, 6) * 0.1;          // 55 73 t[6..7] * 0.1, km
+      T.odo = u24(t, 8);                 // 55 73 t[8..10], km
+      T.battLock = ((t[16] >> 0) & 1) !== 0;   // 55 73 t[16].0
+      T.gpsLock = ((t[16] >> 1) & 1) !== 0;    // 55 73 t[16].1
+      T.have73 = true;
+      break;
     case 0x51: parseCells(t, 0); break;      // cells 1-8
     case 0x55: parseCells(t, 8); break;      // cells 9-16
     case 0x56: parseCells(t, 16); break;     // cells 17-24
@@ -824,14 +862,22 @@ async function tryAutoReconnect() {
 // --------------------------- UI ---------------------------
 
 function $(id) { return document.getElementById(id); }
+// Status badge text is i18n'd (the five st* keys); dataset.state stays the raw state for the CSS.
+const STATUS_KEYS = {
+  'disconnected': 'stDisconnected', 'connecting': 'stConnecting',
+  'linking': 'stLinking', 'connected': 'stConnected', 'no-service': 'stNoService',
+};
 function setStatus(s) {
-  const el = $('status'); if (el) { el.textContent = s; el.dataset.state = s; }
+  const el = $('status'); if (el) { el.textContent = t(STATUS_KEYS[s]) || s; el.dataset.state = s; }
   const cb = $('btn-conn');
   if (cb) {
     const on = (s === 'connecting' || s === 'linking' || s === 'connected' || s === 'no-data');
     cb.textContent = on ? t('btnDisconnect') : t('btnConnect');
     cb.dataset.act = on ? 'disconnect' : 'connect';
   }
+  // Uniform shell: telemetry/settings cards hidden until a link exists; on load only intro/connect/log show.
+  const linkUp = (s === 'linking' || s === 'connected' || s === 'no-data');
+  ['live-card', 'batt-card', 'more-card', 'raw-card'].forEach(id => { const el = $(id); if (el) el.hidden = !linkUp; });
   refreshInfoButtons();
 }
 
@@ -869,8 +915,7 @@ function anonymize(s) {
   return redact(s.replace(/\x01[^\x01]*\x01/g, 'XX').replace(/\x01/g, ''));
 }
 function log(msg, cls) {
-  const ts = new Date().toISOString().slice(11, 19);
-  const raw = '[' + ts + '] ' + msg;
+  const raw = '[' + new Date().toTimeString().slice(0, 8) + '] ' + msg;
   logBuffer.push({ raw: raw, cls: cls || '' });
   const pre = $('log');
   if (pre) {
@@ -892,7 +937,19 @@ function renderLog() {
   });
   pre.scrollTop = pre.scrollHeight;
 }
-function clearLog() { logBuffer = []; const pre = $('log'); if (pre) pre.textContent = ''; log(t('logCleared')); }
+// On-load diagnostic header: same informative block every page prints, so a tester's log shows the
+// build and environment up front, including the load-time FRAME_OK protocol self-test result.
+function logDiagnosticHeader() {
+  log('=== trbm-unlock diagnostic ===');
+  log('build: ' + BUILD);
+  log('time: ' + new Date().toISOString());
+  log('userAgent: ' + (navigator.userAgent || '?'));
+  log('platform: ' + (navigator.platform || '?'));
+  log('webBluetooth: ' + (navigator.bluetooth ? 'yes' : 'no'));
+  log('protocol self-test: ' + (FRAME_OK ? 'OK' : 'FAILED'));
+  log('================================');
+}
+function clearLog() { logBuffer = []; const pre = $('log'); if (pre) pre.textContent = ''; log(t('logCleared')); logDiagnosticHeader(); }
 function copyLog() {
   const text = logBuffer.map(function (e) { return anonymize(e.raw); }).join('\n');
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -982,6 +1039,26 @@ function renderLive() {
   tileText('t-abs', S.received71 ? t(S.abs ? 'onLabel' : 'offLabel') : dash);
   tileText('t-fw', T.swVer ? ('R' + T.swVer) : dash);
   tileText('t-serial', (T.fin || deviceName) ? (T.fin || deviceName) : dash);
+  // Further 55 71 config reads (read-only, every firmware state).
+  const onOff = b => t(b ? 'onLabel' : 'offLabel');
+  tileText('t-ptemp', S.received71 ? (S.sysProTemp + ' °C') : dash);   // protection temp, degC
+  tileText('t-poles', S.received71 ? String(S.motorPolePairs) : dash);
+  tileText('t-slimit', S.received71 ? String(S.speedLimit) : dash);        // main speed limit (raw)
+  tileText('t-startmode', S.received71 ? onOff(S.startMode) : dash);
+  tileText('t-eco', S.received71 ? onOff(S.enfEcon) : dash);
+  tileText('t-antitheft', S.received71 ? onOff(S.atMode) : dash);
+  tileText('t-smart', S.received71 ? onOff(S.isSmart) : dash);
+  tileText('t-reverse', S.received71 ? onOff(S.reverseGear) : dash);
+  tileText('t-sleep', S.received71 ? String(S.sleepTime) : dash);
+  tileText('t-ptime', S.received71 ? String(S.prTime) : dash);
+  // Ride stats from 55 73 (shown only once that frame has arrived).
+  const kmhUnit = t('unitKmh');
+  tileText('t-odo', T.have73 ? (T.odo + ' km') : dash);
+  tileText('t-trip', T.have73 ? (T.trip.toFixed(1) + ' km') : dash);
+  tileText('t-avg', T.have73 ? (T.avgSpeed.toFixed(1) + ' ' + kmhUnit) : dash);
+  tileText('t-max', T.have73 ? (T.maxSpeed.toFixed(1) + ' ' + kmhUnit) : dash);
+  tileText('t-battlock', T.have73 ? onOff(T.battLock) : dash);
+  tileText('t-gpslock', T.have73 ? onOff(T.gpsLock) : dash);
   refreshSettingsInputs();
   refreshGearInputs();
   refreshToggle();
@@ -989,7 +1066,7 @@ function renderLive() {
 }
 function resetTiles() {                                 // no telemetry -> show "-"
   T.lock = null;
-  T.have52 = false; T.have53 = false; T.have72 = false; T.cellMv = null; T.errors = null;
+  T.have52 = false; T.have53 = false; T.have72 = false; T.have73 = false; T.cellMv = null; T.errors = null;
   T.ecu1 = null; T.ecu2 = null;
   S.received71 = false;
   T.swVer = null; fwWarned = false;   // a reconnect re-reads the version and may warn again
@@ -1277,7 +1354,7 @@ function applyTheme(dark) {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
   const b = $('btn-theme');
   if (b) {
-    b.innerHTML = dark ? '&#9728;' : '&#9790;';   // scan-ok: a fixed character, not user input
+    b.textContent = dark ? '\u2600' : '\u263E';
     b.setAttribute('aria-label', t(dark ? 'themeToLight' : 'themeToDark'));
     b.title = b.getAttribute('aria-label');
   }
@@ -1506,7 +1583,7 @@ function wireDocViewer() {
 // --------------------------- wiring ---------------------------
 
 window.addEventListener('DOMContentLoaded', () => {
-  log('tr-unlock build ' + BUILD);   // so a tester's log shows which deployed version they run
+  logDiagnosticHeader();             // so a tester's log shows the build + environment up front
   initLangSwitch();
   initTheme();                       // before applyLang, so the first label is in the right language
   wireDocViewer();
