@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v120';
+const BUILD = 'v121';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -1398,108 +1398,75 @@ const slug = s => s.toLowerCase().trim()
   .replace(/[^\w\sÀ-ɏ-]/g, '')
   .replace(/ /g, '-');
 
-// Only the markdown these documents use: headings, lists with one level of nesting, tables, fenced
-// code, quotes, rules, bold, inline code and links.
-function mdToHtml(src) {
-  const inline = s => escHtml(s)
+// Only the markdown these documents use: headings, lists, tables, fenced code, quotes, rules,
+// bold, inline code and links. Shared with lb-tool-web and the rest of the unlock fleet.
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+// inlineMd receives ALREADY-escaped text (mdToHtml escapes first); internal doc + anchor hrefs stay in-modal.
+function inlineMd(s) {
+  return s
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (all, text, href) => {
-      if (href === DISCLAIMER_HREF) return `<a href="${href}" data-disclaimer>${text}</a>`;
-      if (DOC_TITLES[href]) return `<a href="${href}" data-docfile="${href}">${text}</a>`;
-      if (href.startsWith('#')) return `<a href="${href}" data-anchor="${href.slice(1)}">${text}</a>`;
-      return `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, text, href) {
+      if (href === DISCLAIMER_HREF) return '<a href="' + href + '" data-disclaimer>' + text + '</a>';
+      if (DOC_TITLES[href]) return '<a href="' + href + '" data-docfile="' + href + '">' + text + '</a>';
+      if (href.charAt(0) === '#') return '<a href="' + href + '" data-anchor="' + href.slice(1) + '">' + text + '</a>';
+      return '<a href="' + href + '" target="_blank" rel="noopener">' + text + '</a>';
     });
-
-  const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
-  const out = [];
-  let listKind = null;
-  let li = null;
-  let para = [];
-  let inFence = false;
-
-  const sink = () => (li ? li.parts : out);
-  const flushPara = () => { if (para.length) { sink().push('<p>' + inline(para.join(' ')) + '</p>'); para = []; } };
-  const closeNested = () => { if (li && li.nested) { li.parts.push('</ul>'); li.nested = false; } };
-  const closeLi = () => {
-    if (!li) return;
-    flushPara(); closeNested();
-    out.push('<li>' + li.parts.join('\n') + '</li>');
-    li = null;
-  };
-  const closeList = () => { closeLi(); if (listKind) { out.push('</' + listKind + '>'); listKind = null; } };
-  const block = () => { flushPara(); closeList(); };
-  const openList = kind => {
-    flushPara();
-    if (listKind !== kind) { closeList(); out.push('<' + kind + '>'); listKind = kind; } else closeLi();
-  };
-  const cells = l => l.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
-
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
-    const body = l.trim();
-    const indented = /^ {2,}\S/.test(l);
-
-    if (inFence) {
-      if (body.startsWith('```')) { sink().push('</code></pre>'); inFence = false; } else sink().push(escHtml(l));
-      continue;
-    }
-    if (body.startsWith('```')) {
-      if (li) { flushPara(); closeNested(); } else block();
-      sink().push('<pre><code>');
-      inFence = true;
-      continue;
-    }
-    if (body === '') {
-      if (li && /^ {2,}\S/.test(lines[i + 1] || '')) flushPara(); else block();
-      continue;
-    }
-    if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(body)) { block(); out.push('<hr>'); continue; }
-
-    if (body.startsWith('|') && /^\|[\s:|-]+\|?\s*$/.test((lines[i + 1] || '').trim())) {
-      if (li) { flushPara(); closeNested(); } else block();
-      sink().push('<div class="doc-table"><table><thead><tr>'
-        + cells(body).map(c => '<th>' + inline(c) + '</th>').join('') + '</tr></thead><tbody>');
-      i++;
-      while (i + 1 < lines.length && lines[i + 1].trim().startsWith('|')) {
-        sink().push('<tr>' + cells(lines[++i].trim()).map(c => '<td>' + inline(c) + '</td>').join('') + '</tr>');
+}
+function mdToHtml(md) {
+  var codeBlocks = [];
+  // 1) pull fenced code blocks out first so their content is never treated as markdown
+  md = String(md).replace(/```[^\n]*\n?([\s\S]*?)```/g, function (m, code) {
+    var i = codeBlocks.length;
+    codeBlocks.push('<pre><code>' + esc(code.replace(/\n$/, '')) + '</code></pre>');
+    return '\x00CB' + i + '\x00';
+  });
+  var lines = md.split(/\r?\n/);
+  var out = [], para = [], list = null;
+  function flushPara() { if (para.length) { out.push('<p>' + inlineMd(esc(para.join(' '))) + '</p>'); para = []; } }
+  function flushList() { if (list) { out.push('<' + list.type + '>' + list.items.join('') + '</' + list.type + '>'); list = null; } }
+  function isTableSep(s) { var tt = s.replace(/\s/g, ''); return /^\|?:?-+:?(\|:?-+:?)+\|?$/.test(tt); }
+  function splitRow(s) { return s.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function (c) { return c.trim(); }); }
+  for (var i = 0; i < lines.length; i++) {
+    var ln = lines[i];
+    var cb = ln.match(/^\x00CB(\d+)\x00$/);
+    if (cb) { flushPara(); flushList(); out.push(codeBlocks[Number(cb[1])]); continue; }
+    if (/^\s*$/.test(ln)) { flushPara(); flushList(); continue; }
+    var h = ln.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { flushPara(); flushList(); var lvl = Math.min(h[1].length, 4); out.push('<h' + lvl + '>' + inlineMd(esc(h[2])) + '</h' + lvl + '>'); continue; }
+    if (/^---+$/.test(ln.trim())) { flushPara(); flushList(); out.push('<hr>'); continue; }
+    if (ln.indexOf('|') >= 0 && i + 1 < lines.length && isTableSep(lines[i + 1])) {   // GFM table: header, |---| sep, rows
+      flushPara(); flushList();
+      var head = splitRow(ln); i++;   // consume the separator row
+      var body = '';
+      while (i + 1 < lines.length && lines[i + 1].indexOf('|') >= 0 && lines[i + 1].trim() !== '') {
+        body += '<tr>' + splitRow(lines[++i]).map(function (c) { return '<td>' + inlineMd(esc(c)) + '</td>'; }).join('') + '</tr>';
       }
-      sink().push('</tbody></table></div>');
+      out.push('<table><thead><tr>' + head.map(function (c) { return '<th>' + inlineMd(esc(c)) + '</th>'; }).join('') + '</tr></thead><tbody>' + body + '</tbody></table>');
       continue;
     }
-
-    let m;
-    if ((m = body.match(/^(#{1,4})\s+(.*)$/))) {
-      block();
-      const n = m[1].length;
-      out.push(`<h${n} id="${slug(m[2])}">${inline(m[2])}</h${n}>`);
+    if (/^\s*>/.test(ln)) {                             // merge consecutive > lines into ONE callout
+      flushPara(); flushList();
+      var q = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])) { q.push(lines[i].replace(/^\s*>\s?/, '')); i++; }
+      i--;                                              // step back; the for-loop re-increments
+      while (q.length && /^\s*$/.test(q[0])) q.shift();
+      while (q.length && /^\s*$/.test(q[q.length - 1])) q.pop();
+      if (q.length) out.push('<blockquote>' + mdToHtml(q.join('\n')) + '</blockquote>');  // inner rendered as markdown
       continue;
     }
-    if ((m = body.match(/^>\s?(.*)$/))) {
-      if (li) { flushPara(); closeNested(); } else block();
-      sink().push('<blockquote>' + inline(m[1]) + '</blockquote>');
-      continue;
-    }
-    if (indented && li && (m = body.match(/^[-*]\s+(.*)$/))) {
+    var ul = ln.match(/^\s*[-*]\s+(.*)$/);
+    var ol = ln.match(/^\s*\d+\.\s+(.*)$/);
+    if (ul || ol) {
       flushPara();
-      if (!li.nested) { li.parts.push('<ul class="nested">'); li.nested = true; }
-      li.parts.push('<li>' + inline(m[1]) + '</li>');
+      var type = ul ? 'ul' : 'ol';
+      if (!list || list.type !== type) { flushList(); list = { type: type, items: [] }; }
+      list.items.push('<li>' + inlineMd(esc((ul ? ul[1] : ol[1]))) + '</li>');
       continue;
     }
-    if ((m = body.match(/^[-*]\s+(.*)$/)) && !indented) {
-      openList('ul'); li = { parts: [inline(m[1])], nested: false };
-      continue;
-    }
-    if ((m = body.match(/^\d+\.\s+(.*)$/)) && !indented) {
-      openList('ol'); li = { parts: [inline(m[1])], nested: false };
-      continue;
-    }
-    if (li && !indented) closeList();
-    if (li) closeNested();
-    para.push(body);
+    para.push(ln.trim());
   }
-  if (inFence) sink().push('</code></pre>');
-  block();
+  flushPara(); flushList();
   return out.join('\n');
 }
 
