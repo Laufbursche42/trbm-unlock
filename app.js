@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v119';
+const BUILD = 'v120';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -1385,6 +1385,7 @@ const DOC_TITLES = {
   'GUIDE.de.md': 'footGuide', 'GUIDE.en.md': 'footGuide',
   'PRIVACY.de.md': 'footPrivacy', 'PRIVACY.md': 'footPrivacy',
   'LICENSE.de.md': 'footLicense', 'LICENSE.md': 'footLicense',
+  'DISCLAIMER.de.md': 'footDisclaimer', 'DISCLAIMER.md': 'footDisclaimer',
   'TRADEMARKS.de.md': 'footTrademarks', 'TRADEMARKS.md': 'footTrademarks',
   'README.md': 'footReadme',
 };
@@ -1540,17 +1541,8 @@ function openDocFile(file, anchor, titleKey) {
     });
 }
 
-// The footer disclaimer shows the same points as the intro warning, without a confirm button.
-function openDisclaimer() {
-  const dlg = $('doc'), body = $('doc-body');
-  if (!dlg || !body) return;
-  $('doc-title').textContent = t('footDisclaimer');
-  var html = '<p>' + escHtml(t('discLede')) + '</p><ul>'
-           + tList('discPoints').map(p => '<li>' + p + '</li>').join('') + '</ul>';
-  body.innerHTML = html;   // scan-ok: lede escaped, list items are our own translation table, not user data
-  body.scrollTop = 0;
-  if (typeof dlg.showModal === 'function') dlg.showModal();
-}
+// Footer disclaimer: shared markdown file (DISCLAIMER.{de,}.md), rendered the same way as the other docs.
+function openDisclaimer() { openDocFile(docFile('DISCLAIMER'), '', 'footDisclaimer'); }
 
 function wireDocViewer() {
   document.addEventListener('click', e => {

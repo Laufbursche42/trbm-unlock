@@ -216,16 +216,6 @@ window.I18N = {
     docLoading: "wird geladen ...",
     docFail: "Das Dokument konnte nicht geladen werden.",
     docEnglish: "(englisch)",
-
-    discLede: "Dieses Werkzeug ist ein freies Gemeinschaftsprojekt und steht in keiner Verbindung zu Teverun. Bitte lies diese Punkte, bevor du es benutzt.",
-    discPoints: [
-      "<b>Machbarkeitsstudie:</b> Dieses Werkzeug zeigt, was in der Firmware eines Teverun-Rollers technisch möglich ist, es ist kein fertiges Produkt. Fehlerfreier Betrieb wird nicht versprochen, es gibt keinerlei Gewährleistung. Was du hier tust, tust du auf eigenes Risiko.",
-      "<b>Betriebserlaubnis:</b> Ein entsperrter Roller fährt schneller, als seine Betriebserlaubnis zulässt. Damit erlischt sie und mit ihr in aller Regel der Versicherungsschutz. Bei einem Unfall haftest du persönlich, auch gegenüber Dritten.",
-      "<b>Öffentlicher Verkehr:</b> Wir raten dringend davon ab, entsperrt außerhalb von Privatgelände zu fahren. Was bei dir erlaubt ist, musst du selbst prüfen.",
-      "<b>Gewährleistung:</b> Hersteller und Händler können jede Gewährleistung ablehnen, sobald die Firmware oder die Einstellungen verändert wurden.",
-      "<b>Keine Zusagen:</b> Wir versprechen nicht, dass diese Seite mit deinem Gerät, deinem Browser oder deinem Roller funktioniert.",
-      "<b>Haftung:</b> Für Schäden an Fahrzeug, Personen oder Dritten, die durch oder mit dieser Seite entstehen, übernehmen wir keine Haftung, soweit gesetzlich zulässig. Die Nutzung erfolgt auf eigenes Risiko."
-    ],
   },
 
   en: {
@@ -437,15 +427,5 @@ window.I18N = {
     docLoading: "loading ...",
     docFail: "The document could not be loaded.",
     docEnglish: "(English)",
-
-    discLede: "This tool is a free community project with no connection to Teverun. Please read these points before you use it.",
-    discPoints: [
-      "<b>Feasibility study:</b> This tool exists to show what a Teverun scooter's firmware makes possible, it is not a finished product. Error-free operation is not promised, there is no warranty of any kind. Whatever you do here, you do at your own risk.",
-      "<b>Road approval:</b> An unlocked scooter runs faster than its type approval allows. That approval is void and with it, as a rule, your insurance cover. In an accident you are personally liable, including towards third parties.",
-      "<b>Public roads:</b> We strongly advise against riding unlocked anywhere but on private property. What is allowed where you live is yours to check.",
-      "<b>Warranty:</b> The manufacturer and your dealer can refuse any warranty claim once the firmware or the settings have been changed.",
-      "<b>No promises:</b> We do not promise that this page works with your device, your browser or your scooter.",
-      "<b>Liability:</b> To the extent the law allows, we accept no liability for damage to the vehicle, to people or to third parties caused by or with this page. You use it at your own risk."
-    ],
   }
 };
