@@ -12,7 +12,7 @@
 
 'use strict';
 
-const BUILD = 'v118';
+const BUILD = 'v119';
 
 // --------------------------- BLE transport constants ---------------------------
 
@@ -1630,8 +1630,9 @@ window.addEventListener('DOMContentLoaded', () => {
   $('btn-copy-log').addEventListener('click', copyLog);
   $('btn-clear-log').addEventListener('click', clearLog);
   $('btn-save-log').addEventListener('click', saveLog);
-  { const pl = $('public-log'); if (pl) pl.addEventListener('change', () => { publicLog = pl.checked; renderLog(); }); }
-  { const dl = $('diag-log'); if (dl) dl.addEventListener('change', () => { diagLog = dl.checked; }); }
+  { const pl = $('public-log'); if (pl) pl.addEventListener('change', () => { publicLog = pl.checked; log('public-log: ' + (pl.checked ? 'on (anonymizing device name/id)' : 'off')); renderLog(); }); }
+  { const dl = $('diag-log'); if (dl) dl.addEventListener('change', () => { diagLog = dl.checked; log('diag-log: ' + (dl.checked ? 'on' : 'off')); }); }
+  { const sa = $('showall'); if (sa) sa.addEventListener('change', () => { log('show-all-frames: ' + (sa.checked ? 'on' : 'off')); renderLog(); }); }
 
   refreshInfoButtons();      // start disabled; both views need a link that delivers frames
   if (!navigator.bluetooth) log('Web Bluetooth not available. On iOS use the Bluefy browser.', 'log-err');
