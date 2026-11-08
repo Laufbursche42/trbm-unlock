@@ -8,13 +8,13 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
-<link rel="stylesheet" href="styles.css?v=125">
+<link rel="stylesheet" href="styles.css?v=126">
 <!-- Cloudflare Web Analytics --><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "1f2a3915448b4b68b4380423f2be4b09"}'></script><!-- scan-ok: Cloudflare Web Analytics beacon (token starts 1f2a39 ends 4b09); cookieless aggregate page metrics, see PRIVACY -->
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Laufbursche <span data-t="brandSub"></span></h1>
+    <h1>Laufbursche <span data-t="brandSub">Teverun Blade Tool</span></h1>
     <div class="head-right">
       <span class="status" id="status" data-state="disconnected">disconnected</span>
       <div class="head-tools">
@@ -29,129 +29,129 @@
 
   <div class="sunset-overlay" id="sunset-overlay" role="dialog" aria-modal="true" aria-labelledby="sunset-ov-title">
     <div class="sunset-box">
-      <h2 class="sunset-title" id="sunset-ov-title" data-t="sunsetTitle"></h2>
-      <div class="sunset-text" data-t="sunsetBannerHtml"></div>
-      <button type="button" class="sunset-dismiss" id="sunset-overlay-x" data-t="sunsetDismiss"></button>
+      <h2 class="sunset-title" id="sunset-ov-title" data-t="sunsetTitle">Dieses Tool zieht um</h2>
+      <div class="sunset-text" data-t="sunsetBannerHtml"><b>Dieses Tool zieht um.</b> Dieses Repo wird <b>nicht mehr weiterentwickelt</b> - bitte wechsle zum neuen Tool: <a href="https://lb-tool-web.pages.dev/" target="_blank" rel="noopener">lb-tool-web.pages.dev</a>. Probleme beim Wechsel? Öffne ein <a href="https://github.com/Laufbursche42/Laufbursche42/issues/new" target="_blank" rel="noopener">Issue auf GitHub</a> oder schick eine <a href="https://www.escooter-stammtisch.de/index.php?user/6497-laufbursche/" target="_blank" rel="noopener">PN im eScooter-Stammtisch</a>.</div>
+      <button type="button" class="sunset-dismiss" id="sunset-overlay-x" data-t="sunsetDismiss">Verstanden, weiter zur Seite</button>
     </div>
   </div>
-  <div class="sunset-banner" role="alert" data-t="sunsetBannerHtml"></div>
-  <p class="hint infobox" data-t="fwNoteHtml"></p>
-  <p class="hint infobox" data-t="androidAppHtml"></p>
+  <div class="sunset-banner" role="alert" data-t="sunsetBannerHtml"><b>Dieses Tool zieht um.</b> Dieses Repo wird <b>nicht mehr weiterentwickelt</b> - bitte wechsle zum neuen Tool: <a href="https://lb-tool-web.pages.dev/" target="_blank" rel="noopener">lb-tool-web.pages.dev</a>. Probleme beim Wechsel? Öffne ein <a href="https://github.com/Laufbursche42/Laufbursche42/issues/new" target="_blank" rel="noopener">Issue auf GitHub</a> oder schick eine <a href="https://www.escooter-stammtisch.de/index.php?user/6497-laufbursche/" target="_blank" rel="noopener">PN im eScooter-Stammtisch</a>.</div>
+  <p class="hint infobox" data-t="fwNoteHtml">Tuning ist nur mit Firmware 3.4.6 möglich.</p>
+  <p class="hint infobox" data-t="androidAppHtml">Android-Nutzer: Es gibt eine native Android-App, die dasselbe ohne Browser macht - <a href="https://github.com/Laufbursche42/tr-lb-edition" target="_blank" rel="noopener">tr-lb-edition</a>. Sie umgeht die Web-Bluetooth-Hürden (manche Handys, etwa Samsung mit Auto Blocker, blockieren die Browser-Verbindung). Diese Web-Seite ist der Weg für iOS.</p>
 
   <!-- (a) intro -->
   <div class="card">
-    <h2 data-t="s1Title"></h2>
-    <p class="hint" data-t="sub"></p>
-    <p class="hint" data-t="startHintGuide"></p>
-    <p class="warn" data-t="expWarn"></p>
-    <p class="hint" data-t="ownDevice"></p>
+    <h2 data-t="s1Title">So fängst du an</h2>
+    <p class="hint" data-t="sub">Teverun Blade / Blade Mini (eKFV) live über Web Bluetooth. Läuft in Bluefy (iOS) oder Chrome (Android/Desktop).</p>
+    <p class="hint" data-t="startHintGuide">Neu hier? In der <a href="GUIDE.de.md" data-doc="GUIDE" data-t="footGuide">Anleitung</a> steht jeder Schritt.</p>
+    <p class="warn" data-t="expWarn">Machbarkeitsstudie: Diese Seite zeigt, was das Bluetooth-Protokoll eines Teverun-E-Scooters technisch möglich macht. Sie ist kein fertiges Produkt. Es gibt keine Gewährleistung. Alles was du hier tust, tust du auf eigenes Risiko. <a href="#" data-disclaimer>Haftungsausschluss lesen</a>.</p>
+    <p class="hint" data-t="ownDevice">Nur am eigenen Fahrzeug auf privatem Gelände. Das Anheben der Höchstgeschwindigkeit hebt die Drossel auf, die ABE erlischt und der Betrieb auf öffentlichen Wegen ist dann nicht erlaubt.</p>
   </div>
 
   <!-- (b) connection -->
   <div class="card">
-    <h2 data-t="s2Title"></h2>
+    <h2 data-t="s2Title">Verbindung</h2>
     <div class="log-opt">
-      <span data-t="showallLabel"></span>
+      <span data-t="showallLabel">Alle Geräte zeigen (wenn deins nicht auftaucht)</span>
       <input type="checkbox" id="showall">
     </div>
     <div class="btns">
       <button class="primary span2" id="btn-conn" data-act="connect"></button>
     </div>
     <p class="hint" id="devinfo"></p>
-    <p class="hint" data-t="connHint"></p>
+    <p class="hint" data-t="connHint">Tippe auf Verbinden und wähle deinen Roller aus der Liste des Browsers (Name beginnt mit TDE oder T1). Auf iOS braucht es Bluefy, auf Android/Desktop Chrome. Safari kann kein Bluetooth.</p>
   </div>
 
   <!-- (c) live telemetry -->
   <div class="card" id="live-card" hidden>
-    <h2 data-t="liveTitle"></h2>
+    <h2 data-t="liveTitle">Live-Daten</h2>
     <div class="verdict neutral" id="fw-state"><b></b></div>
     <div class="grid">
-      <div class="tile"><b id="t-speed">-</b><small data-t="tileSpeed"></small></div>
-      <div class="tile"><b id="t-lock">-</b><small data-t="tileLock"></small></div>
-      <div class="tile"><b id="t-gear">-</b><small data-t="tileGear"></small></div>
-      <div class="tile" id="tile-cur"><b id="t-cur">-</b><small data-t="tileCur"></small></div>
-      <div class="tile"><b id="t-cruise">-</b><small data-t="tileCruise"></small></div>
-      <div class="tile"><b id="t-wheel">-</b><small data-t="tileWheel"></small></div>
-      <div class="tile"><b id="t-unit">-</b><small data-t="tileUnit"></small></div>
-      <div class="tile"><b id="t-abs">-</b><small data-t="tileAbs"></small></div>
-      <div class="tile"><b id="t-fw">-</b><small data-t="tileFw"></small></div>
-      <div class="tile"><b id="t-serial">-</b><small data-t="tileSerial"></small></div>
-      <div class="tile"><b id="t-slimit">-</b><small data-t="tileSlimit"></small></div>
-      <div class="tile"><b id="t-ptemp">-</b><small data-t="tilePtemp"></small></div>
-      <div class="tile"><b id="t-poles">-</b><small data-t="tilePoles"></small></div>
-      <div class="tile"><b id="t-startmode">-</b><small data-t="tileStartMode"></small></div>
-      <div class="tile"><b id="t-eco">-</b><small data-t="tileEco"></small></div>
-      <div class="tile"><b id="t-antitheft">-</b><small data-t="tileAntitheft"></small></div>
-      <div class="tile"><b id="t-smart">-</b><small data-t="tileSmart"></small></div>
-      <div class="tile"><b id="t-reverse">-</b><small data-t="tileReverse"></small></div>
-      <div class="tile"><b id="t-sleep">-</b><small data-t="tileSleep"></small></div>
-      <div class="tile"><b id="t-ptime">-</b><small data-t="tilePtime"></small></div>
-      <div class="tile"><b id="t-avg">-</b><small data-t="tileAvg"></small></div>
-      <div class="tile"><b id="t-max">-</b><small data-t="tileMax"></small></div>
-      <div class="tile"><b id="t-trip">-</b><small data-t="tileTrip"></small></div>
-      <div class="tile"><b id="t-odo">-</b><small data-t="tileOdo"></small></div>
-      <div class="tile"><b id="t-battlock">-</b><small data-t="tileBattLock"></small></div>
-      <div class="tile"><b id="t-gpslock">-</b><small data-t="tileGpsLock"></small></div>
+      <div class="tile"><b id="t-speed">-</b><small data-t="tileSpeed">Geschwindigkeit</small></div>
+      <div class="tile"><b id="t-lock">-</b><small data-t="tileLock">Sperrzustand</small></div>
+      <div class="tile"><b id="t-gear">-</b><small data-t="tileGear">Gang</small></div>
+      <div class="tile" id="tile-cur"><b id="t-cur">-</b><small data-t="tileCur">Strom</small></div>
+      <div class="tile"><b id="t-cruise">-</b><small data-t="tileCruise">Tempomat</small></div>
+      <div class="tile"><b id="t-wheel">-</b><small data-t="tileWheel">Radgröße</small></div>
+      <div class="tile"><b id="t-unit">-</b><small data-t="tileUnit">Einheit</small></div>
+      <div class="tile"><b id="t-abs">-</b><small data-t="tileAbs">ABS</small></div>
+      <div class="tile"><b id="t-fw">-</b><small data-t="tileFw">Firmware</small></div>
+      <div class="tile"><b id="t-serial">-</b><small data-t="tileSerial">FIN</small></div>
+      <div class="tile"><b id="t-slimit">-</b><small data-t="tileSlimit">Speed-Limit (roh)</small></div>
+      <div class="tile"><b id="t-ptemp">-</b><small data-t="tilePtemp">Schutztemperatur</small></div>
+      <div class="tile"><b id="t-poles">-</b><small data-t="tilePoles">Polpaare</small></div>
+      <div class="tile"><b id="t-startmode">-</b><small data-t="tileStartMode">Anfahrmodus</small></div>
+      <div class="tile"><b id="t-eco">-</b><small data-t="tileEco">Eco</small></div>
+      <div class="tile"><b id="t-antitheft">-</b><small data-t="tileAntitheft">Diebstahlschutz</small></div>
+      <div class="tile"><b id="t-smart">-</b><small data-t="tileSmart">Smart / TCS</small></div>
+      <div class="tile"><b id="t-reverse">-</b><small data-t="tileReverse">Rückwärtsgang</small></div>
+      <div class="tile"><b id="t-sleep">-</b><small data-t="tileSleep">Schlaf-Zeit</small></div>
+      <div class="tile"><b id="t-ptime">-</b><small data-t="tilePtime">Schutz-Zeit</small></div>
+      <div class="tile"><b id="t-avg">-</b><small data-t="tileAvg">Schnitt-Tempo</small></div>
+      <div class="tile"><b id="t-max">-</b><small data-t="tileMax">Max. Tempo</small></div>
+      <div class="tile"><b id="t-trip">-</b><small data-t="tileTrip">Tagesstrecke</small></div>
+      <div class="tile"><b id="t-odo">-</b><small data-t="tileOdo">Gesamtstrecke</small></div>
+      <div class="tile"><b id="t-battlock">-</b><small data-t="tileBattLock">Akku-Sperre</small></div>
+      <div class="tile"><b id="t-gpslock">-</b><small data-t="tileGpsLock">GPS-Sperre</small></div>
     </div>
-    <p class="hint" data-t="liveHint"></p>
+    <p class="hint" data-t="liveHint">Werte kommen direkt vom Roller über Bluetooth. Keine Kommunikation zu Teverun-Servern.</p>
     <div class="btns">
-      <button class="primary span2" id="btn-err" data-t="btnErr" disabled></button>
+      <button class="primary span2" id="btn-err" data-t="btnErr" disabled>Fehlerberichte lesen</button>
     </div>
   </div>
 
   <!-- (d) battery telemetry -->
   <div class="card" id="batt-card" hidden>
-    <h2 data-t="battTitle"></h2>
+    <h2 data-t="battTitle">Akku-Telemetrie</h2>
     <div class="grid">
-      <div class="tile"><b id="t-batt">-</b><small data-t="tileBatt"></small></div>
-      <div class="tile"><b id="t-volt">-</b><small data-t="tileVolt"></small></div>
+      <div class="tile"><b id="t-batt">-</b><small data-t="tileBatt">Ladung</small></div>
+      <div class="tile"><b id="t-volt">-</b><small data-t="tileVolt">Spannung</small></div>
     </div>
     <div class="btns">
-      <button class="primary span2" id="btn-bat" data-t="btnBat" disabled></button>
+      <button class="primary span2" id="btn-bat" data-t="btnBat" disabled>Batterie-Infos öffnen</button>
     </div>
-    <p class="hint" data-t="battHint"></p>
+    <p class="hint" data-t="battHint">Nur was der Roller meldet. Ein Strich bedeutet: dieser Wert kam noch nicht.</p>
   </div>
 
   <!-- (e) settings -->
   <div class="card" id="more-card" hidden>
-    <h2 data-t="setTitle"></h2>
+    <h2 data-t="setTitle">Einstellungen</h2>
 
-    <h3 class="set-group" data-t="setgrpSpeed"></h3>
+    <h3 class="set-group" data-t="setgrpSpeed">Tempo und Freischaltung</h3>
     <div class="btns">
       <button class="primary span2" id="btn-toggle" disabled></button>
     </div>
     <p class="hint" id="lock-reason" hidden></p>
     <div class="speed-cols">
-      <div class="set-row"><label data-t="lblOpen"></label><input id="speed-open" type="number" min="1" max="100" placeholder="45"></div>
-      <div class="set-row"><label data-t="lblLegal"></label><input id="speed-legal" type="number" min="1" max="22" placeholder="21"></div>
+      <div class="set-row"><label data-t="lblOpen">Offene Geschwindigkeit (alle Gänge)</label><input id="speed-open" type="number" min="1" max="100" placeholder="45"></div>
+      <div class="set-row"><label data-t="lblLegal">Legale Geschwindigkeit (alle Gänge)</label><input id="speed-legal" type="number" min="1" max="22" placeholder="21"></div>
     </div>
-    <p class="hint" data-t="controlsHint"></p>
-    <p class="hint" data-t="speedValuesHint"></p>
+    <p class="hint" data-t="controlsHint"><b>Entsperren</b> schreibt die eingestellten Geschwindigkeiten auf die drei deutschen Gänge, <b>Sperren</b> die Sperr-Werte. Der Knopf zeigt jeweils die nächste sinnvolle Aktion. Nur auf Firmware 3.4.6 aktiv.</p>
+    <p class="hint" data-t="speedValuesHint">Diese beiden Felder setzen alle drei Gänge auf einen Wert (bequemer Schnellzugriff). Pro Gang unterschiedliche Werte stellst du in den erweiterten Einstellungen ein. Sperr-Standard 10/15/21: manche Roller peaken beim Anfahren kurz über 22, mit 21 statt 22 bleibt der Peak unter der eKFV-Grenze.</p>
 
-    <h3 class="set-group" data-t="setgrpGeneral"></h3>
+    <h3 class="set-group" data-t="setgrpGeneral">Allgemein</h3>
     <div class="set-row">
-      <label data-t="lblWheel"></label>
+      <label data-t="lblWheel">Radgröße (Zoll)</label>
       <input id="wheel-in" type="number" min="1" max="25.5" step="0.1" disabled>
-      <button id="btn-set-wheel" data-t="btnSetWheel" disabled></button>
+      <button id="btn-set-wheel" data-t="btnSetWheel" disabled>Radgröße setzen</button>
     </div>
     <div class="set-row">
-      <label data-t="lblCruise"></label>
+      <label data-t="lblCruise">Tempomat</label>
       <select id="cruise-in" disabled>
-        <option value="0" data-t="cruiseOff"></option>
-        <option value="1" data-t="cruiseAuto"></option>
-        <option value="2" data-t="cruiseManual"></option>
+        <option value="0" data-t="cruiseOff">Aus</option>
+        <option value="1" data-t="cruiseAuto">Auto</option>
+        <option value="2" data-t="cruiseManual">Manuell</option>
       </select>
-      <button id="btn-set-cruise" data-t="btnSetCruise" disabled></button>
+      <button id="btn-set-cruise" data-t="btnSetCruise" disabled>Tempomat setzen</button>
     </div>
-    <p class="hint" data-t="setBasicHint"></p>
+    <p class="hint" data-t="setBasicHint">Radgröße lässt sich nur im entsperrten Zustand ändern (die Firmware verwirft es sonst). Tempomat bleibt auch gesperrt einstellbar.</p>
   </div>
 
   <!-- (f) advanced settings - per-gear expert grid -->
   <div class="card" id="raw-card" hidden>
-    <h2 data-t="advTitle"></h2>
-    <p class="hint" data-t="advHint"></p>
+    <h2 data-t="advTitle">Erweiterte Einstellungen (Experten)</h2>
+    <p class="hint" data-t="advHint">Pro Gang: <b>Speed</b> (entsperrt), <b>Sperre</b> (Wert beim Sperren), Anfahrt vorne/hinten, Strom und eABS (Motorbremse). Deutsche Gänge sind intern ESC-Gang 2, 3 und 4. Gang 1 und 5 gibt es nur im Ausland und werden nicht angefasst. Alle Werte werden im Browser gemerkt. Nur auf Firmware 3.4.6 aktiv.</p>
     <div class="gears">
-      <div class="gear-row gear-head"><span></span><span data-t="gearColSpeed"></span><span data-t="gearColLock"></span><span data-t="gearColFront"></span><span data-t="gearColRear"></span><span data-t="gearColCur"></span><span data-t="gearColEabs"></span></div>
+      <div class="gear-row gear-head"><span></span><span data-t="gearColSpeed">Speed</span><span data-t="gearColLock">Sperre</span><span data-t="gearColFront">Anf. v</span><span data-t="gearColRear">Anf. h</span><span data-t="gearColCur">Strom</span><span data-t="gearColEabs">eABS</span></div>
       <div class="gear-row">
         <label id="gear-lbl-1"></label>
         <input id="g1-in" type="number" min="1" max="100" value="45">
@@ -184,68 +184,68 @@
 
   <!-- (g) log -->
   <div class="card">
-    <h2 data-t="s6Title"></h2>
+    <h2 data-t="s6Title">Protokoll-Log</h2>
     <div class="log-opts">
-      <label class="log-opt"><span data-t="publicLogLabel"></span><input type="checkbox" id="public-log" checked></label>
-      <label class="log-opt"><span data-t="diagLogLabel"></span><input type="checkbox" id="diag-log"></label>
+      <label class="log-opt"><span data-t="publicLogLabel">Öffentliches Log (Gerätename/ID anonymisieren)</span><input type="checkbox" id="public-log" checked></label>
+      <label class="log-opt"><span data-t="diagLogLabel">Diagnose-Log</span><input type="checkbox" id="diag-log"></label>
     </div>
     <div class="btns">
-      <button type="button" id="btn-copy-log" data-t="btnCopyLog"></button>
-      <button type="button" id="btn-clear-log" data-t="btnClearLog"></button>
-      <button type="button" id="btn-save-log" class="span2" data-t="btnSaveLog"></button>
+      <button type="button" id="btn-copy-log" data-t="btnCopyLog">Kopieren</button>
+      <button type="button" id="btn-clear-log" data-t="btnClearLog">Leeren</button>
+      <button type="button" id="btn-save-log" class="span2" data-t="btnSaveLog">Speichern</button>
     </div>
     <pre id="log"></pre>
-    <p class="hint"><span class="log-tx" data-t="logTxLegend"></span>, <span class="log-rx" data-t="logRxLegend"></span></p>
+    <p class="hint"><span class="log-tx" data-t="logTxLegend">gesendet</span>, <span class="log-rx" data-t="logRxLegend">empfangen</span></p>
   </div>
 
   <!-- (h) footer -->
   <footer class="foot">
     <span class="foot-links">
-      <a id="link-guide" href="GUIDE.de.md" data-doc="GUIDE" data-t="footGuide"></a>
-      <a href="https://github.com/Laufbursche42/trbm-unlock" target="_blank" rel="noopener" data-t="footSource"></a>
-      <a id="link-readme" href="README.md" data-doc="README" data-t="footReadme"></a>
-      <a id="link-disclaimer" href="#" data-t="footDisclaimer"></a>
-      <a id="link-license" href="LICENSE.de.md" data-doc="LICENSE" data-t="footLicense"></a>
-      <a id="link-privacy" href="PRIVACY.de.md" data-doc="PRIVACY" data-t="footPrivacy"></a>
-      <a id="link-trademarks" href="TRADEMARKS.de.md" data-doc="TRADEMARKS" data-t="footTrademarks"></a>
+      <a id="link-guide" href="GUIDE.de.md" data-doc="GUIDE" data-t="footGuide">Anleitung</a>
+      <a href="https://github.com/Laufbursche42/trbm-unlock" target="_blank" rel="noopener" data-t="footSource">Quellcode</a>
+      <a id="link-readme" href="README.md" data-doc="README" data-t="footReadme">Readme</a>
+      <a id="link-disclaimer" href="#" data-t="footDisclaimer">Haftungsausschluss</a>
+      <a id="link-license" href="LICENSE.de.md" data-doc="LICENSE" data-t="footLicense">Lizenz</a>
+      <a id="link-privacy" href="PRIVACY.de.md" data-doc="PRIVACY" data-t="footPrivacy">Datenschutz</a>
+      <a id="link-trademarks" href="TRADEMARKS.de.md" data-doc="TRADEMARKS" data-t="footTrademarks">Marken</a>
     </span>
-    <span class="foot-links"><span class="ver" id="build-ver"></span><a href="https://github.com/Laufbursche42/Laufbursche42/issues" target="_blank" rel="noopener" data-t="footIssue"></a></span>
+    <span class="foot-links"><span class="ver" id="build-ver"></span><a href="https://github.com/Laufbursche42/Laufbursche42/issues" target="_blank" rel="noopener" data-t="footIssue">Fehler melden</a></span>
     <a class="foot-copy" href="https://laufbursche42.github.io/Laufbursche42/" target="_blank" rel="noopener">Copyright (c) 2026 Laufbursche</a>
   </footer>
 </div>
 
 <dialog id="err" aria-labelledby="err-title">
   <div class="doc-head">
-    <h3 id="err-title" data-t="errTitle"></h3>
+    <h3 id="err-title" data-t="errTitle">Fehlerberichte</h3>
     <button type="button" id="err-close">&times;</button>
   </div>
   <div class="dlg-body">
-    <p class="hint" data-t="errHint"></p>
+    <p class="hint" data-t="errHint">Aktive Fehler und Warnungen, live vom Roller gelesen. Keine Kommunikation zu Teverun-Servern.</p>
     <div id="err-list"></div>
   </div>
   <div class="dlg-foot">
-    <button class="primary" id="err-close-2" data-t="docClose"></button>
+    <button class="primary" id="err-close-2" data-t="docClose">Schließen</button>
   </div>
 </dialog>
 
 <dialog id="bat" aria-labelledby="bat-title">
   <div class="doc-head">
-    <h3 id="bat-title" data-t="batTitle"></h3>
+    <h3 id="bat-title" data-t="batTitle">Batterie-Infos</h3>
     <button type="button" id="bat-close">&times;</button>
   </div>
   <div class="dlg-body">
-    <p class="hint" data-t="batHint"></p>
-    <h4 class="dlg-sec" data-t="batHealthTitle"></h4>
+    <p class="hint" data-t="batHint">Zustand, Übersicht und Einzelzellspannungen des Akkupacks, live vom Roller gelesen. Keine Kommunikation zu Teverun-Servern.</p>
+    <h4 class="dlg-sec" data-t="batHealthTitle">Batteriezustand</h4>
     <div id="bat-health"></div>
     <hr class="sep">
-    <h4 class="dlg-sec" data-t="batPackTitle"></h4>
+    <h4 class="dlg-sec" data-t="batPackTitle">Pack-Übersicht</h4>
     <div id="bat-pack"></div>
     <hr class="sep">
-    <h4 class="dlg-sec" data-t="batCellsTitle"></h4>
+    <h4 class="dlg-sec" data-t="batCellsTitle">Zellen</h4>
     <div class="grid cells" id="bat-cells"></div>
   </div>
   <div class="dlg-foot">
-    <button class="primary" id="bat-close-2" data-t="docClose"></button>
+    <button class="primary" id="bat-close-2" data-t="docClose">Schließen</button>
   </div>
 </dialog>
 
@@ -256,7 +256,7 @@
   </div>
   <div class="doc-body" id="doc-body"></div>
   <div class="doc-foot">
-    <button type="button" id="doc-close" data-t="docClose"></button>
+    <button type="button" id="doc-close" data-t="docClose">Schließen</button>
   </div>
 </dialog>
 
@@ -267,25 +267,25 @@
   </div>
   <div class="doc-body"><p id="help-body"></p></div>
   <div class="doc-foot">
-    <button type="button" id="help-close" data-t="docClose"></button>
+    <button type="button" id="help-close" data-t="docClose">Schließen</button>
   </div>
 </dialog>
 
 <dialog id="fwwarn" aria-labelledby="fwwarn-title">
   <div class="doc-head">
-    <h3 id="fwwarn-title" data-t="fwWarnTitle"></h3>
+    <h3 id="fwwarn-title" data-t="fwWarnTitle">Firmware nicht unterstützt</h3>
     <button type="button" id="fwwarn-close">&times;</button>
   </div>
   <div class="dlg-body">
     <p class="warn" id="fwwarn-msg"></p>
   </div>
   <div class="dlg-foot">
-    <button class="primary" id="fwwarn-close-2" data-t="docClose"></button>
+    <button class="primary" id="fwwarn-close-2" data-t="docClose">Schließen</button>
   </div>
 </dialog>
 
-<script src="report-footer.js?v=125"></script>
-<script src="i18n.js?v=125"></script>
-<script src="app.js?v=125"></script>
+<script src="report-footer.js?v=126"></script>
+<script src="i18n.js?v=126"></script>
+<script src="app.js?v=126"></script>
 </body>
 </html>
